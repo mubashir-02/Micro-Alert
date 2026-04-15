@@ -74,6 +74,98 @@
           </div>
         </div>
 
+        <!-- Real Examples Panel -->
+        <div class="panel collapsed" id="examplesPanel">
+          <div class="panel-header" onclick="togglePanel('examplesPanel')">
+            <div class="panel-title">
+              <span class="icon">📌</span> Real Micro‑Risk Examples
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <p class="examples-intro">
+              Concrete, real‑world patterns Micro‑Alert is built to surface — as a few actionable zones, not 500 pins.
+            </p>
+
+            <div class="examples-grid">
+              <div class="example-card">
+                <div class="example-top">
+                  <div class="example-title">OMR • Sholinganallur (weekday AM)</div>
+                  <span class="example-chip high">High</span>
+                </div>
+                <div class="example-body">
+                  Buses merge aggressively near the signal → chain braking. Peak: <b>8–9 AM</b>, ~<b>300m</b> before signal.
+                </div>
+                <div class="example-actions">
+                  <span class="example-action">Nudge: keep buffer, avoid left lane</span>
+                  <span class="example-action">Pre‑trip alert if ETA overlaps</span>
+                </div>
+              </div>
+
+              <div class="example-card">
+                <div class="example-top">
+                  <div class="example-title">OMR • Thoraipakkam rejoin (weekday PM)</div>
+                  <span class="example-chip med">Med</span>
+                </div>
+                <div class="example-body">
+                  Last‑second service‑lane rejoin + weaving → sudden stops. Peak: <b>6–8 PM</b>.
+                </div>
+                <div class="example-actions">
+                  <span class="example-action">Nudge: merge earlier, stay predictable</span>
+                  <span class="example-action">Suppress unless on your route</span>
+                </div>
+              </div>
+
+              <div class="example-card">
+                <div class="example-top">
+                  <div class="example-title">ECR • Neelankarai (weekend dusk)</div>
+                  <span class="example-chip med">Med</span>
+                </div>
+                <div class="example-body">
+                  Parking slowdowns + pedestrians crossing between cars. Peak: <b>5:30–7 PM</b> weekends.
+                </div>
+                <div class="example-actions">
+                  <span class="example-action">Nudge: slow early, watch crossings</span>
+                  <span class="example-action">Alt route: suggest inland option</span>
+                </div>
+              </div>
+
+              <div class="example-card">
+                <div class="example-top">
+                  <div class="example-title">GST • Chromepet bus‑stop cluster</div>
+                  <span class="example-chip med">Med</span>
+                </div>
+                <div class="example-body">
+                  Bus pull‑outs + autos stopping anywhere → stop‑and‑go braking. Peak: <b>8–10 AM</b>, <b>5:30–8 PM</b>.
+                </div>
+                <div class="example-actions">
+                  <span class="example-action">Nudge: keep distance near bays</span>
+                  <span class="example-action">Reroute only if meaningful</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="examples-ps">
+              <div class="ps-row">
+                <span class="ps-k">Identify</span>
+                <span class="ps-v">Where are zones, how frequent, what type?</span>
+              </div>
+              <div class="ps-row">
+                <span class="ps-k">Aggregate</span>
+                <span class="ps-v">Combine many reports into a reliable score.</span>
+              </div>
+              <div class="ps-row">
+                <span class="ps-k">Communicate</span>
+                <span class="ps-v">Tell only what matters for the next trip.</span>
+              </div>
+              <div class="ps-row">
+                <span class="ps-k">Act</span>
+                <span class="ps-v">Nudge, reroute, or pre‑trip alert — actionable.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Ask About Area Panel -->
         <div class="panel" id="askPanel">
           <div class="panel-header" onclick="togglePanel('askPanel')">
@@ -84,10 +176,10 @@
           </div>
           <div class="panel-body">
             <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
-              Pan the map to any area in Chennai, then click below to get an AI-powered risk analysis.
+              Click below to detect your current location and get an AI-powered risk analysis of your surroundings.
             </p>
             <button class="btn btn-primary btn-block" id="askAreaBtn" onclick="askAboutArea()">
-              🧠 Analyze Current Area
+              📍 Analyze My Location
             </button>
             <div class="loading" id="askLoading">
               <div class="spinner"></div>

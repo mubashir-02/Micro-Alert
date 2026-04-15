@@ -341,12 +341,12 @@ const seedData = [
     verified: true
   },
 
-  // ── Real Accident-Prone Hotspots (GCTP Data) ────────────────────────────────
+  // ── Accident-Prone Hotspots (realistic demo data) ───────────────────────────
   {
     type: 'accident',
     location: { type: 'Point', coordinates: [80.2121, 13.0110] },
     severity: 5,
-    description: 'Fatal accident zone: Kathipara to GST Road stretch. 47 accidents recorded in 2024. Flyover exit speed combined with merging ground traffic causes severe rear-end and side-impact crashes.',
+    description: 'High-severity crash-risk zone: Kathipara to GST Road stretch. Flyover exit speed combined with heavy merges can cause rear-end and side-impact crashes, especially during peak hours.',
     timeOfDay: 'evening_rush',
     weather: 'clear',
     roadName: 'GST Road (NH 45)',
@@ -357,7 +357,7 @@ const seedData = [
     type: 'accident',
     location: { type: 'Point', coordinates: [80.1642, 13.0860] },
     severity: 5,
-    description: 'Major accident hotspot at Maduravoyal interchange. High-speed vehicles from bypass merge with local traffic without adequate deceleration lanes. 32 crashes in 2024.',
+    description: 'Crash-risk hotspot at Maduravoyal interchange. High-speed bypass traffic merging with slower local traffic creates frequent conflict points, especially at night.',
     timeOfDay: 'night',
     weather: 'clear',
     roadName: 'Chennai Bypass Road',
@@ -379,7 +379,7 @@ const seedData = [
     type: 'accident',
     location: { type: 'Point', coordinates: [80.2758, 13.0613] },
     severity: 4,
-    description: 'Pedestrian fatality zone near Anna Arch/War Memorial. Tourists and joggers cross the road without using designated crossings. 11 pedestrian accidents in 2024.',
+    description: 'Pedestrian conflict zone near Anna Arch/War Memorial. Visitors and joggers cross outside designated crossings, increasing sudden-braking and collision risk.',
     timeOfDay: 'morning_rush',
     weather: 'clear',
     roadName: 'Kamarajar Salai',
@@ -401,7 +401,7 @@ const seedData = [
     type: 'accident',
     location: { type: 'Point', coordinates: [80.2160, 12.9860] },
     severity: 5,
-    description: 'Inner Ring Road (Southern Sector) fatal crash corridor near Nanganallur. 38 accidents recorded in 2024. High-speed traffic with minimal lighting at night.',
+    description: 'Crash-risk corridor near Nanganallur on Inner Ring Road. Higher speeds combined with low visibility at night increase rear-end and loss-of-control risk.',
     timeOfDay: 'night',
     weather: 'clear',
     roadName: 'Inner Ring Road',
@@ -423,7 +423,7 @@ const seedData = [
     type: 'accident',
     location: { type: 'Point', coordinates: [80.2204, 12.9400] },
     severity: 5,
-    description: 'Velachery Bypass accident hotspot. 29 crashes in 2024 including 8 fatalities. High-speed trucks and buses collide with two-wheelers at unprotected intersections.',
+    description: 'Velachery Bypass crash-risk hotspot. High-speed trucks and buses meet unprotected intersections and two-wheelers weaving through traffic.',
     timeOfDay: 'evening_rush',
     weather: 'clear',
     roadName: 'Velachery Bypass Road',
@@ -467,7 +467,7 @@ const seedData = [
     type: 'accident',
     location: { type: 'Point', coordinates: [80.2420, 12.9870] },
     severity: 3,
-    description: 'Taramani Link Road accident zone. Unsafe median openings and heavy IT corridor traffic create T-bone crash risk. 14 incidents reported in 2024.',
+    description: 'Taramani Link Road crash-risk zone. Unsafe median openings and heavy IT corridor traffic create frequent T-bone conflict points.',
     timeOfDay: 'evening_rush',
     weather: 'clear',
     roadName: 'Taramani Link Road',
@@ -478,7 +478,7 @@ const seedData = [
     type: 'accident',
     location: { type: 'Point', coordinates: [80.2670, 13.0800] },
     severity: 4,
-    description: 'Chennai Central Metro station pedestrian crash zone. Commuters rushing to catch trains cross the road unpredictably. 9 pedestrian injuries in 2024.',
+    description: 'Chennai Central Metro station pedestrian conflict zone. Commuters rushing to catch trains cross the road unpredictably near station exits and bus stops.',
     timeOfDay: 'morning_rush',
     weather: 'clear',
     roadName: 'EVR Periyar Salai',
@@ -511,7 +511,7 @@ const seedData = [
     type: 'accident',
     location: { type: 'Point', coordinates: [80.2279, 12.8950] },
     severity: 5,
-    description: 'OMR Sholinganallur IT corridor — deadliest stretch in Chennai. 52 accidents in 2024. High-speed traffic, waterlogging during rains, and poor street lighting.',
+    description: 'OMR Sholinganallur IT corridor crash-risk stretch. High-speed traffic, waterlogging during rains, and poor street lighting increase severe collision likelihood.',
     timeOfDay: 'night',
     weather: 'rain',
     roadName: 'Rajiv Gandhi Salai (OMR)',
@@ -533,7 +533,7 @@ const seedData = [
     type: 'accident',
     location: { type: 'Point', coordinates: [80.2500, 13.0500] },
     severity: 4,
-    description: 'Thousand Lights flyover exit crash zone. Vehicles descend at high speed and encounter slow traffic at the Anna Salai signal. 15 rear-end crashes in 2024.',
+    description: 'Thousand Lights flyover exit crash-risk zone. Vehicles descend at high speed and encounter slow traffic near the Anna Salai signal.',
     timeOfDay: 'evening_rush',
     weather: 'clear',
     roadName: 'Anna Salai',
@@ -555,7 +555,7 @@ const seedData = [
     type: 'accident',
     location: { type: 'Point', coordinates: [80.1462, 12.9516] },
     severity: 4,
-    description: 'Chromepet railway crossing fatal zone. 7 deaths in 2024 from vehicles attempting to cross after gates begin closing. Inadequate warning systems.',
+    description: 'Chromepet railway crossing crash-risk zone. Vehicles sometimes attempt to cross late as gates begin closing, creating severe conflict.',
     timeOfDay: 'morning_rush',
     weather: 'clear',
     roadName: 'GST Road',
@@ -577,7 +577,7 @@ const seedData = [
     type: 'accident',
     location: { type: 'Point', coordinates: [80.2300, 13.1100] },
     severity: 4,
-    description: 'Perambur-Kolathur Road accident corridor. Narrow roads with high bus frequency and no pedestrian infrastructure. 18 accidents in 2024.',
+    description: 'Perambur corridor crash-risk zone. Narrow roads with high bus frequency and limited pedestrian space create frequent near-misses and collisions.',
     timeOfDay: 'evening_rush',
     weather: 'clear',
     roadName: 'Perambur High Road',
@@ -599,7 +599,7 @@ const seedData = [
     type: 'accident',
     location: { type: 'Point', coordinates: [80.2420, 13.0840] },
     severity: 3,
-    description: 'Kilpauk Garden Road junction — poor signal timing causes conflict between through traffic and turning vehicles. 12 T-bone crashes in 2024.',
+    description: 'Kilpauk Garden Road junction — signal timing and turning conflicts increase T-bone risk, especially during peak hours.',
     timeOfDay: 'morning_rush',
     weather: 'clear',
     roadName: 'Kilpauk Garden Road',
@@ -610,12 +610,533 @@ const seedData = [
     type: 'accident',
     location: { type: 'Point', coordinates: [80.2640, 12.9835] },
     severity: 4,
-    description: 'Thiruvanmiyur ECR junction — one of Chennai\'s deadliest intersections. High-speed ECR traffic meets dense local traffic. 22 crashes in 2024 including 3 fatalities.',
+    description: 'Thiruvanmiyur ECR junction crash-risk zone. High-speed ECR traffic meets dense local traffic with complex turning movements.',
     timeOfDay: 'night',
     weather: 'clear',
     roadName: 'East Coast Road / OMR Junction',
     landmark: 'Thiruvanmiyur Junction',
     verified: true
+  },
+
+  // ── Tiruvallur Region ───────────────────────────────────────────────────────
+  {
+    type: 'sudden_brake',
+    location: { type: 'Point', coordinates: [79.9064, 13.1435] },
+    severity: 3,
+    description: 'Sudden braking at Tiruvallur Bus Stand entrance. MTC and private buses stop abruptly without pulling into the bay. Congested approach causes chain braking.',
+    timeOfDay: 'morning_rush',
+    weather: 'clear',
+    roadName: 'Tiruvallur High Road',
+    landmark: 'Tiruvallur Bus Stand',
+    verified: true
+  },
+  {
+    type: 'blind_turn',
+    location: { type: 'Point', coordinates: [79.9120, 13.1510] },
+    severity: 3,
+    description: 'Blind curve near Tiruvallur Railway Station underpass. Low clearance and poor lighting make oncoming vehicles invisible until the last moment.',
+    timeOfDay: 'night',
+    weather: 'clear',
+    roadName: 'Station Road',
+    landmark: 'Tiruvallur Railway Underpass',
+    verified: true
+  },
+  {
+    type: 'habitual_violation',
+    location: { type: 'Point', coordinates: [79.9180, 13.1380] },
+    severity: 2,
+    description: 'Wrong-side driving on Tiruvallur-Poonamallee Road shoulder. Two-wheelers and autos use the wrong side to avoid traffic near the temple zone.',
+    timeOfDay: 'afternoon',
+    weather: 'clear',
+    roadName: 'Tiruvallur-Poonamallee Road',
+    landmark: 'Veeraraghava Perumal Temple',
+    verified: true
+  },
+
+  // ── Avadi Region ────────────────────────────────────────────────────────────
+  {
+    type: 'accident',
+    location: { type: 'Point', coordinates: [80.1010, 13.1146] },
+    severity: 4,
+    description: 'Avadi–Poonamallee corridor crash-risk hotspot. Heavy industrial vehicles mixing with two-wheelers increases rear-end and sideswipe risk at peak times.',
+    timeOfDay: 'morning_rush',
+    weather: 'clear',
+    roadName: 'Avadi-Poonamallee Highway',
+    landmark: 'Avadi HVF Gate',
+    verified: true
+  },
+  {
+    type: 'sudden_brake',
+    location: { type: 'Point', coordinates: [80.1025, 13.1210] },
+    severity: 4,
+    description: 'Sudden braking near Avadi Bus Depot. Buses exiting the depot cut across traffic lanes without signalling, causing rear-end collisions.',
+    timeOfDay: 'evening_rush',
+    weather: 'clear',
+    roadName: 'CTH Road',
+    landmark: 'Avadi Bus Depot',
+    verified: true
+  },
+  {
+    type: 'habitual_violation',
+    location: { type: 'Point', coordinates: [80.0950, 13.1080] },
+    severity: 3,
+    description: 'Red-light jumping at Avadi Toll Gate junction. Vehicles from all directions routinely ignore the signal, especially during non-peak hours.',
+    timeOfDay: 'night',
+    weather: 'clear',
+    roadName: 'Chennai-Bangalore Highway (NH4)',
+    landmark: 'Avadi Toll Gate',
+    verified: true
+  },
+
+  // ── Arakkonam Region ────────────────────────────────────────────────────────
+  {
+    type: 'accident',
+    location: { type: 'Point', coordinates: [79.6700, 13.0830] },
+    severity: 4,
+    description: 'Arakkonam–Kanchipuram Road crash-risk stretch. Narrow undivided road with heavy truck traffic and risky overtakes increases severe collision likelihood.',
+    timeOfDay: 'night',
+    weather: 'clear',
+    roadName: 'Arakkonam-Kanchipuram Road',
+    landmark: 'Arakkonam Railway Junction',
+    verified: true
+  },
+  {
+    type: 'blind_turn',
+    location: { type: 'Point', coordinates: [79.6630, 13.0760] },
+    severity: 3,
+    description: 'Blind curve near Arakkonam Air Force Station approach road. High walls on both sides block all visibility. No convex mirror installed.',
+    timeOfDay: 'afternoon',
+    weather: 'clear',
+    roadName: 'IAF Station Road',
+    landmark: 'Arakkonam Air Force Station',
+    verified: true
+  },
+
+  // ── Sriperumbudur Region ────────────────────────────────────────────────────
+  {
+    type: 'accident',
+    location: { type: 'Point', coordinates: [79.9410, 12.9710] },
+    severity: 5,
+    description: 'Sriperumbudur Highway crash-risk stretch. High-speed highway traffic meets unmarked speed breakers and factory entrances, increasing sudden-braking and rear-end risk.',
+    timeOfDay: 'night',
+    weather: 'clear',
+    roadName: 'Chennai-Bangalore Highway (NH4)',
+    landmark: 'Sriperumbudur Toll Plaza',
+    verified: true
+  },
+  {
+    type: 'sudden_brake',
+    location: { type: 'Point', coordinates: [79.9480, 12.9650] },
+    severity: 4,
+    description: 'Sudden braking at Sriperumbudur SIPCOT gate. Industrial trucks make abrupt turns into factory entrances without warning. Frequent rear-end crashes.',
+    timeOfDay: 'morning_rush',
+    weather: 'clear',
+    roadName: 'NH4 Service Road',
+    landmark: 'SIPCOT Industrial Park',
+    verified: true
+  },
+  {
+    type: 'habitual_violation',
+    location: { type: 'Point', coordinates: [79.9350, 12.9780] },
+    severity: 3,
+    description: 'Illegal U-turns on NH4 near Sriperumbudur temple. Pilgrims and local traffic make dangerous U-turns across the highway median.',
+    timeOfDay: 'afternoon',
+    weather: 'clear',
+    roadName: 'Chennai-Bangalore Highway (NH4)',
+    landmark: 'Sriperumbudur Ramanuja Temple',
+    verified: true
+  },
+
+  // ── Kanchipuram Region ──────────────────────────────────────────────────────
+  {
+    type: 'accident',
+    location: { type: 'Point', coordinates: [79.7036, 12.8342] },
+    severity: 5,
+    description: 'Kanchipuram–Chennai road crash-risk hotspot. Tourist buses and cargo vehicles mix with local traffic, with sudden stops near junctions and markets.',
+    timeOfDay: 'evening_rush',
+    weather: 'clear',
+    roadName: 'Kanchipuram-Chennai Road (NH4)',
+    landmark: 'Kanchipuram Bus Terminal',
+    verified: true
+  },
+  {
+    type: 'habitual_violation',
+    location: { type: 'Point', coordinates: [79.7100, 12.8410] },
+    severity: 3,
+    description: 'Chronic jaywalking near Kanchipuram Kamakshi Temple. Pilgrims cross the busy main road from all directions, ignoring pedestrian crossings.',
+    timeOfDay: 'afternoon',
+    weather: 'clear',
+    roadName: 'East Raja Street',
+    landmark: 'Kamakshi Amman Temple',
+    verified: true
+  },
+  {
+    type: 'blind_turn',
+    location: { type: 'Point', coordinates: [79.6980, 12.8280] },
+    severity: 4,
+    description: 'Dangerous blind turn near Kanchipuram Silk Market area. Narrow streets with parked silk cargo vehicles obstruct visibility around corners.',
+    timeOfDay: 'morning_rush',
+    weather: 'clear',
+    roadName: 'Pillai Kattalai Street',
+    landmark: 'Kanchipuram Silk Market',
+    verified: true
+  },
+
+  // ── Kundrathur Region ───────────────────────────────────────────────────────
+  {
+    type: 'sudden_brake',
+    location: { type: 'Point', coordinates: [80.0990, 12.9990] },
+    severity: 3,
+    description: 'Sudden braking near Kundrathur Junction. Auto-rickshaws and share vans stop unpredictably to pick up passengers along GST Road.',
+    timeOfDay: 'morning_rush',
+    weather: 'clear',
+    roadName: 'GST Road',
+    landmark: 'Kundrathur Junction',
+    verified: true
+  },
+  {
+    type: 'accident',
+    location: { type: 'Point', coordinates: [80.1050, 13.0070] },
+    severity: 4,
+    description: 'Kundrathur–Porur Road crash-risk zone. Narrow two-lane road with heavy lorry traffic and risky overtakes increases head-on collision risk.',
+    timeOfDay: 'afternoon',
+    weather: 'clear',
+    roadName: 'Kundrathur-Porur Road',
+    landmark: 'Kundrathur Bridge',
+    verified: true
+  },
+
+  // ── Thakkolam Region ────────────────────────────────────────────────────────
+  {
+    type: 'accident',
+    location: { type: 'Point', coordinates: [79.7250, 13.0590] },
+    severity: 3,
+    description: 'Thakkolam Railway Crossing accident-prone zone. No barricade warning system. Vehicles attempt to cross during approaching trains.',
+    timeOfDay: 'morning_rush',
+    weather: 'fog',
+    roadName: 'Thakkolam-Arakkonam Road',
+    landmark: 'Thakkolam Railway Crossing',
+    verified: true
+  },
+  {
+    type: 'habitual_violation',
+    location: { type: 'Point', coordinates: [79.7320, 13.0540] },
+    severity: 2,
+    description: 'No-helmet riding endemic on Thakkolam inner roads. Two-wheeler riders routinely flout helmet rules in the semi-rural stretch.',
+    timeOfDay: 'afternoon',
+    weather: 'clear',
+    roadName: 'Thakkolam Main Road',
+    landmark: 'Thakkolam Town Center',
+    verified: true
+  },
+
+  // ── Wallajahbad / Walajabad Region ──────────────────────────────────────────
+  {
+    type: 'accident',
+    location: { type: 'Point', coordinates: [79.7180, 12.7870] },
+    severity: 4,
+    description: 'Walajabad Highway junction crash zone. NH-level traffic speed on a single-lane road. Head-on collisions frequent during overtaking maneuvers.',
+    timeOfDay: 'night',
+    weather: 'clear',
+    roadName: 'Walajabad-Kanchipuram Road',
+    landmark: 'Walajabad Bus Stand',
+    verified: true
+  },
+
+  // ── Vandalur Region ─────────────────────────────────────────────────────────
+  {
+    type: 'sudden_brake',
+    location: { type: 'Point', coordinates: [80.0810, 12.8880] },
+    severity: 3,
+    description: 'Sudden braking near Vandalur Zoo entrance. Tourist vehicles and school buses make abrupt stops to drop passengers on the highway.',
+    timeOfDay: 'afternoon',
+    weather: 'clear',
+    roadName: 'GST Road',
+    landmark: 'Arignar Anna Zoological Park (Vandalur Zoo)',
+    verified: true
+  },
+  {
+    type: 'accident',
+    location: { type: 'Point', coordinates: [80.0850, 12.8750] },
+    severity: 4,
+    description: 'Vandalur–Kelambakkam Road crash-risk hotspot. Two-lane road with limited lighting and heavy truck traffic increases head-on and sideswipe risk at night.',
+    timeOfDay: 'night',
+    weather: 'clear',
+    roadName: 'Vandalur-Kelambakkam Road',
+    landmark: 'SRM University Entrance',
+    verified: true
+  },
+
+  // ── Poonamallee Region ──────────────────────────────────────────────────────
+  {
+    type: 'accident',
+    location: { type: 'Point', coordinates: [80.1030, 13.0470] },
+    severity: 4,
+    description: 'Poonamallee Bypass junction crash-risk zone. Vehicles exiting the bypass at speed encounter slower local traffic and frequent lane changes.',
+    timeOfDay: 'evening_rush',
+    weather: 'clear',
+    roadName: 'Chennai Bypass Road',
+    landmark: 'Poonamallee Bypass Junction',
+    verified: true
+  },
+  {
+    type: 'sudden_brake',
+    location: { type: 'Point', coordinates: [80.1120, 13.0420] },
+    severity: 3,
+    description: 'Hard braking near Poonamallee Military compound. Army vehicle convoys enter/exit causing civilian traffic to brake suddenly on the narrow road.',
+    timeOfDay: 'morning_rush',
+    weather: 'clear',
+    roadName: 'Poonamallee High Road',
+    landmark: 'Poonamallee Cantonment',
+    verified: true
+  },
+
+  // ── South & Coastal Chennai (denser micro-risks for your map region) ─────────
+  {
+    type: 'sudden_brake',
+    location: { type: 'Point', coordinates: [80.2599, 12.9958] },
+    severity: 4,
+    description: 'Frequent hard braking on LB Road due to buses pulling out abruptly and pedestrians crossing between vehicles.',
+    timeOfDay: 'evening_rush',
+    weather: 'clear',
+    roadName: 'LB Road',
+    landmark: 'Adyar (Depot area)',
+    verified: false
+  },
+  {
+    type: 'habitual_violation',
+    location: { type: 'Point', coordinates: [80.2558, 12.9898] },
+    severity: 3,
+    description: 'Wrong-side riding on service lanes to bypass congestion; two-wheelers commonly cut against traffic near the signal.',
+    timeOfDay: 'evening_rush',
+    weather: 'clear',
+    roadName: 'East Coast Road (ECR)',
+    landmark: 'Thiruvanmiyur Signal',
+    verified: false
+  },
+  {
+    type: 'blind_turn',
+    location: { type: 'Point', coordinates: [80.2703, 12.9726] },
+    severity: 3,
+    description: 'Blind left-turn into a narrow lane with parked cars blocking visibility; two-wheelers appear suddenly around the corner.',
+    timeOfDay: 'night',
+    weather: 'clear',
+    roadName: 'Besant Nagar Beach Road',
+    landmark: 'Besant Nagar',
+    verified: false
+  },
+  {
+    type: 'sudden_brake',
+    location: { type: 'Point', coordinates: [80.2696, 12.9556] },
+    severity: 3,
+    description: 'Sudden braking near beach access as cars slow unexpectedly to park; pedestrians cross without looking.',
+    timeOfDay: 'afternoon',
+    weather: 'clear',
+    roadName: 'ECR Service Road',
+    landmark: 'Neelankarai',
+    verified: false
+  },
+  {
+    type: 'blind_turn',
+    location: { type: 'Point', coordinates: [80.2709, 12.9358] },
+    severity: 4,
+    description: 'Hidden curve with roadside stalls narrowing the lane; oncoming traffic becomes visible late, especially at dusk.',
+    timeOfDay: 'evening_rush',
+    weather: 'clear',
+    roadName: 'East Coast Road (ECR)',
+    landmark: 'Palavakkam',
+    verified: false
+  },
+  {
+    type: 'habitual_violation',
+    location: { type: 'Point', coordinates: [80.2688, 12.9256] },
+    severity: 3,
+    description: 'Persistent illegal U-turns at a median opening; vehicles stop suddenly in the fast lane to turn.',
+    timeOfDay: 'evening_rush',
+    weather: 'clear',
+    roadName: 'East Coast Road (ECR)',
+    landmark: 'Kottivakkam',
+    verified: false
+  },
+  {
+    type: 'sudden_brake',
+    location: { type: 'Point', coordinates: [80.2652, 12.9108] },
+    severity: 4,
+    description: 'Hard braking in a school zone where autos stop abruptly to pick up students; congestion peaks on weekdays.',
+    timeOfDay: 'afternoon',
+    weather: 'clear',
+    roadName: 'ECR Service Road',
+    landmark: 'Injambakkam',
+    verified: false
+  },
+  {
+    type: 'accident',
+    location: { type: 'Point', coordinates: [80.2638, 12.8988] },
+    severity: 4,
+    description: 'Crash-risk point near a junction: fast through-traffic meets turning vehicles and buses changing lanes late.',
+    timeOfDay: 'evening_rush',
+    weather: 'clear',
+    roadName: 'East Coast Road (ECR)',
+    landmark: 'Akkarai',
+    verified: false
+  },
+  {
+    type: 'blind_turn',
+    location: { type: 'Point', coordinates: [80.2562, 12.9153] },
+    severity: 3,
+    description: 'Blind merge from a side street onto ECR with limited line of sight; braking distance worsens during rain.',
+    timeOfDay: 'night',
+    weather: 'rain',
+    roadName: 'East Coast Road (ECR)',
+    landmark: 'Near Neelankarai Junction',
+    verified: false
+  },
+  {
+    type: 'habitual_violation',
+    location: { type: 'Point', coordinates: [80.2521, 12.9047] },
+    severity: 2,
+    description: 'High-speed weaving by two-wheelers on the ECR stretch; risky overtakes and shoulder riding are common at night.',
+    timeOfDay: 'night',
+    weather: 'clear',
+    roadName: 'East Coast Road (ECR)',
+    landmark: 'Near Akkarai Bridge',
+    verified: false
+  },
+
+  // OMR corridor (Perungudi → Navalur → Siruseri)
+  {
+    type: 'sudden_brake',
+    location: { type: 'Point', coordinates: [80.2436, 12.9723] },
+    severity: 4,
+    description: 'Abrupt braking near IT corridor merge as cars cut across lanes to take the service road exit.',
+    timeOfDay: 'evening_rush',
+    weather: 'clear',
+    roadName: 'Rajiv Gandhi Salai (OMR)',
+    landmark: 'Perungudi',
+    verified: false
+  },
+  {
+    type: 'habitual_violation',
+    location: { type: 'Point', coordinates: [80.2449, 12.9599] },
+    severity: 3,
+    description: 'Two-wheelers routinely ride against flow on the service lane to bypass signal queues.',
+    timeOfDay: 'morning_rush',
+    weather: 'clear',
+    roadName: 'OMR Service Road',
+    landmark: 'Thoraipakkam',
+    verified: false
+  },
+  {
+    type: 'blind_turn',
+    location: { type: 'Point', coordinates: [80.2465, 12.9466] },
+    severity: 3,
+    description: 'Blind entry from a parking/service lane onto main road; cars accelerate into traffic with minimal gap checks.',
+    timeOfDay: 'afternoon',
+    weather: 'clear',
+    roadName: 'Rajiv Gandhi Salai (OMR)',
+    landmark: 'Karapakkam',
+    verified: false
+  },
+  {
+    type: 'accident',
+    location: { type: 'Point', coordinates: [80.2277, 12.9186] },
+    severity: 4,
+    description: 'Crash-risk junction with heavy turning movements and late lane changes around a large signal.',
+    timeOfDay: 'evening_rush',
+    weather: 'clear',
+    roadName: 'Rajiv Gandhi Salai (OMR)',
+    landmark: 'Perumbakkam Link Road Junction',
+    verified: false
+  },
+  {
+    type: 'sudden_brake',
+    location: { type: 'Point', coordinates: [80.2077, 12.9090] },
+    severity: 3,
+    description: 'Stop-and-go braking near Navalur as vehicles slow suddenly for speed breakers and unmarked crossings.',
+    timeOfDay: 'evening_rush',
+    weather: 'clear',
+    roadName: 'OMR / Navalur Road',
+    landmark: 'Navalur',
+    verified: false
+  },
+  {
+    type: 'blind_turn',
+    location: { type: 'Point', coordinates: [80.2012, 12.8605] },
+    severity: 4,
+    description: 'Poorly lit curve near Siruseri where vehicles enter/exit campuses; visibility drops sharply during rain.',
+    timeOfDay: 'night',
+    weather: 'rain',
+    roadName: 'Rajiv Gandhi Salai (OMR)',
+    landmark: 'Siruseri SIPCOT',
+    verified: false
+  },
+
+  // Tambaram / Chromepet / Pallavaram belt (dense region in your screenshot)
+  {
+    type: 'sudden_brake',
+    location: { type: 'Point', coordinates: [80.1372, 12.9345] },
+    severity: 4,
+    description: 'Frequent sudden braking near bus stop and shopfronts; vehicles stop abruptly and two-wheelers cut in.',
+    timeOfDay: 'evening_rush',
+    weather: 'clear',
+    roadName: 'GST Road',
+    landmark: 'Chromepet Bus Stop',
+    verified: false
+  },
+  {
+    type: 'habitual_violation',
+    location: { type: 'Point', coordinates: [80.1508, 12.9692] },
+    severity: 3,
+    description: 'Lane-cutting and signal violations at a busy junction; two-wheelers squeeze through at the signal change.',
+    timeOfDay: 'morning_rush',
+    weather: 'clear',
+    roadName: 'GST Road',
+    landmark: 'Pallavaram Junction',
+    verified: false
+  },
+  {
+    type: 'blind_turn',
+    location: { type: 'Point', coordinates: [80.1439, 12.9228] },
+    severity: 3,
+    description: 'Blind entry/exit near the railway station approach road; parked autos obscure visibility and force sudden stops.',
+    timeOfDay: 'night',
+    weather: 'clear',
+    roadName: 'Station Road',
+    landmark: 'Tambaram Railway Station',
+    verified: false
+  },
+  {
+    type: 'accident',
+    location: { type: 'Point', coordinates: [80.1217, 12.9631] },
+    severity: 4,
+    description: 'Crash-risk point where fast-moving traffic meets local turning vehicles and pedestrians at an unprotected crossing.',
+    timeOfDay: 'evening_rush',
+    weather: 'clear',
+    roadName: 'Pallavaram–Thoraipakkam Road (SH109)',
+    landmark: 'Near Pallavaram',
+    verified: false
+  },
+  {
+    type: 'sudden_brake',
+    location: { type: 'Point', coordinates: [80.1155, 12.9005] },
+    severity: 3,
+    description: 'Abrupt braking near a curve and speed breakers; buses and vans stop suddenly to pick passengers.',
+    timeOfDay: 'afternoon',
+    weather: 'clear',
+    roadName: 'Tambaram–Velachery Road',
+    landmark: 'Selaiyur',
+    verified: false
+  },
+  {
+    type: 'blind_turn',
+    location: { type: 'Point', coordinates: [80.1036, 12.8859] },
+    severity: 4,
+    description: 'Blind curve on Vandalur–Kelambakkam road with minimal lighting; heavy vehicles occupy full lane at night.',
+    timeOfDay: 'night',
+    weather: 'clear',
+    roadName: 'Vandalur–Kelambakkam Road',
+    landmark: 'Near Vandalur',
+    verified: false
   }
 ];
 

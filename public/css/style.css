@@ -214,6 +214,143 @@ html, body {
   padding: 0 16px 16px;
 }
 
+/* ─── Real Examples Panel ───────────────────────────────────────────────────── */
+.examples-intro {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.examples-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.example-card {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  transition: all var(--transition-fast);
+}
+
+.example-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-active);
+  transform: translateX(2px);
+}
+
+.example-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.example-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.example-chip {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.example-chip.high {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.10);
+  color: #fecaca;
+}
+
+.example-chip.med {
+  border-color: rgba(249, 115, 22, 0.35);
+  background: rgba(249, 115, 22, 0.10);
+  color: #fed7aa;
+}
+
+.example-chip.low {
+  border-color: rgba(234, 179, 8, 0.35);
+  background: rgba(234, 179, 8, 0.10);
+  color: #fef08a;
+}
+
+.example-body {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.example-body b {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.example-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.example-action {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  background: rgba(59, 130, 246, 0.08);
+  color: var(--text-accent);
+  font-weight: 600;
+}
+
+.examples-ps {
+  border-top: 1px solid var(--border-color);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ps-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ps-k {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  width: 88px;
+}
+
+.ps-v {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
 /* ─── Route Input ────────────────────────────────────────────────────────────── */
 .route-form {
   display: flex;
