@@ -283,6 +283,84 @@ html, body {
   transform: translateY(-1px);
 }
 
+/* ─── Autocomplete Dropdown ──────────────────────────────────────────────────── */
+.autocomplete-wrapper {
+  position: relative;
+}
+
+.autocomplete-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1001;
+  background: var(--bg-card);
+  border: 1px solid var(--border-active);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: -1px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.autocomplete-dropdown::-webkit-scrollbar {
+  width: 4px;
+}
+
+.autocomplete-dropdown::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.autocomplete-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-item:hover {
+  background: var(--bg-card-hover);
+}
+
+.autocomplete-item .ac-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.autocomplete-item .ac-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autocomplete-item:hover .ac-text {
+  color: var(--text-primary);
+}
+
+.autocomplete-item.no-results {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.autocomplete-item.no-results:hover {
+  background: transparent;
+}
+
 /* ─── Buttons ────────────────────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
@@ -497,6 +575,12 @@ html, body {
 .risk-tag.habitual_violation {
   background: var(--risk-yellow-bg);
   color: var(--risk-yellow);
+}
+
+.risk-tag.accident {
+  background: rgba(220, 38, 38, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(220, 38, 38, 0.25);
 }
 
 /* ─── Report Form ────────────────────────────────────────────────────────────── */
@@ -899,6 +983,12 @@ html, body {
   color: var(--risk-yellow);
 }
 
+.popup-inner .popup-type.accident {
+  background: rgba(220, 38, 38, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
 .popup-inner h3 {
   font-size: 14px;
   font-weight: 700;
@@ -1026,6 +1116,129 @@ html, body {
   animation: pulse 2s infinite;
 }
 
+.custom-marker.accident {
+  background: #dc2626;
+  box-shadow: 0 0 16px rgba(220, 38, 38, 0.7), 0 0 32px rgba(220, 38, 38, 0.3);
+  animation: accidentPulse 1.5s infinite;
+  border-color: rgba(255, 200, 200, 0.5);
+  font-size: 14px;
+}
+
+/* ─── Destination Markers (Start & End) ──────────────────────────────────────── */
+.destination-marker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: destMarkerDrop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.dest-marker-pin {
+  width: 36px;
+  height: 36px;
+  border-radius: 50% 50% 50% 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(-45deg);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  z-index: 2;
+  transition: transform 0.2s ease;
+}
+
+.dest-marker-pin svg {
+  transform: rotate(45deg);
+}
+
+.destination-marker:hover .dest-marker-pin {
+  transform: rotate(-45deg) scale(1.15);
+}
+
+.start-marker .dest-marker-pin {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.45);
+}
+
+.end-marker .dest-marker-pin {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45);
+}
+
+.dest-marker-label {
+  margin-top: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  z-index: 2;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.start-marker .dest-marker-label {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.end-marker .dest-marker-label {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.dest-marker-pulse {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  z-index: 1;
+  animation: destPulse 2s ease-out infinite;
+}
+
+.start-marker .dest-marker-pulse {
+  background: rgba(16, 185, 129, 0.3);
+}
+
+.end-marker .dest-marker-pulse {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+@keyframes destMarkerDrop {
+  0% {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(4px) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes destPulse {
+  0% {
+    width: 16px;
+    height: 16px;
+    opacity: 0.6;
+  }
+  100% {
+    width: 50px;
+    height: 50px;
+    opacity: 0;
+  }
+}
+
 /* ─── Animations ─────────────────────────────────────────────────────────────── */
 @keyframes spin {
   to { transform: rotate(360deg); }
@@ -1051,9 +1264,74 @@ html, body {
   50% { box-shadow: 0 0 24px rgba(139, 92, 246, 0.8); }
 }
 
+@keyframes accidentPulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(220, 38, 38, 0.7), 0 0 32px rgba(220, 38, 38, 0.3); }
+  50% { box-shadow: 0 0 24px rgba(220, 38, 38, 0.9), 0 0 48px rgba(220, 38, 38, 0.5); }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* ─── My Location Marker ─────────────────────────────────────────────────────── */
+.my-location-dot {
+  position: relative;
+  width: 24px;
+  height: 24px;
+}
+
+.my-location-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  background: #3b82f6;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.6), 0 0 20px rgba(59, 130, 246, 0.3);
+  z-index: 2;
+}
+
+.my-location-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  background: rgba(59, 130, 246, 0.25);
+  border-radius: 50%;
+  animation: locationPulse 2s ease-out infinite;
+  z-index: 1;
+}
+
+@keyframes locationPulse {
+  0% {
+    width: 14px;
+    height: 14px;
+    opacity: 0.8;
+  }
+  100% {
+    width: 48px;
+    height: 48px;
+    opacity: 0;
+  }
+}
+
+/* Locating button spinner state */
+.map-control-btn.locating {
+  animation: locatingSpin 1s linear infinite;
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+@keyframes locatingSpin {
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
 }
 
 /* ─── Ask Area Panel ─────────────────────────────────────────────────────────── */

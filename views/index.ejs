@@ -41,18 +41,20 @@
           </div>
           <div class="panel-body">
             <form class="route-form" id="routeForm" onsubmit="return false;">
-              <div class="input-group">
+              <div class="input-group autocomplete-wrapper">
                 <span class="input-icon">📍</span>
-                <input type="text" id="startLocation" placeholder="Start: e.g., Anna Nagar" autocomplete="off">
+                <input type="text" id="startLocation" placeholder="Start: type any location…" autocomplete="off">
+                <div class="autocomplete-dropdown" id="startDropdown"></div>
               </div>
-              <div class="input-group">
+              <div class="input-group autocomplete-wrapper">
                 <span class="input-icon">🏁</span>
-                <input type="text" id="endLocation" placeholder="End: e.g., T. Nagar" autocomplete="off">
+                <input type="text" id="endLocation" placeholder="End: type any location…" autocomplete="off">
+                <div class="autocomplete-dropdown" id="endDropdown"></div>
               </div>
               <div class="route-suggestions">
-                <span class="suggestion-chip" onclick="fillRoute('Anna Nagar', 'T. Nagar')">Anna Nagar → T. Nagar</span>
-                <span class="suggestion-chip" onclick="fillRoute('Tambaram', 'Adyar')">Tambaram → Adyar</span>
-                <span class="suggestion-chip" onclick="fillRoute('Chennai Central', 'Marina Beach')">Central → Marina</span>
+                <span class="suggestion-chip" onclick="fillRoute('Anna Nagar, Chennai', 'T. Nagar, Chennai')">Anna Nagar → T. Nagar</span>
+                <span class="suggestion-chip" onclick="fillRoute('Tambaram, Chennai', 'Adyar, Chennai')">Tambaram → Adyar</span>
+                <span class="suggestion-chip" onclick="fillRoute('Chennai Central', 'Marina Beach, Chennai')">Central → Marina</span>
               </div>
               <button type="button" class="btn btn-primary btn-block" id="scanRouteBtn" onclick="scanRoute()">
                 🔍 Scan Route for Risks
@@ -130,6 +132,7 @@
                   <option value="sudden_brake">🛑 Sudden Braking Zone</option>
                   <option value="blind_turn">🔄 Blind Turn</option>
                   <option value="habitual_violation">⚠️ Habitual Violation</option>
+                  <option value="accident">💥 Accident Zone</option>
                 </select>
               </div>
               <div class="form-group">
@@ -186,6 +189,10 @@
         <button class="map-control-btn" id="emergencyBtn" onclick="showEmergency()">
           🚨
           <span class="tooltip">Emergency Services</span>
+        </button>
+        <button class="map-control-btn" id="locateBtn" onclick="locateMe()">
+          📍
+          <span class="tooltip">My Location</span>
         </button>
         <button class="map-control-btn" id="centerBtn" onclick="centerMap()">
           🎯

@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const riskSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['sudden_brake', 'blind_turn', 'habitual_violation'],
+    enum: ['sudden_brake', 'blind_turn', 'habitual_violation', 'accident'],
     required: true
   },
   location: {
