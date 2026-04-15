@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Micro-Alert identifies, aggregates, and communicates small repeated road risks to everyday commuters in Chennai, India. Stay safe on every commute.">
+  <title><%= title %></title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- App CSS -->
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- Mobile Sidebar Toggle -->
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">☰</button>
+
+  <div class="app-container">
+    <!-- ─── Sidebar ─────────────────────────────────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-row">
+          <div class="logo-icon">⚡</div>
+          <div class="logo-text">
+            <h1>Micro‑Alert</h1>
+            <p>Chennai Road Risk Intelligence</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-body">
+
+        <!-- Route Panel -->
+        <div class="panel" id="routePanel">
+          <div class="panel-header" onclick="togglePanel('routePanel')">
+            <div class="panel-title">
+              <span class="icon">🗺️</span> Route Risk Scanner
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <form class="route-form" id="routeForm" onsubmit="return false;">
+              <div class="input-group">
+                <span class="input-icon">📍</span>
+                <input type="text" id="startLocation" placeholder="Start: e.g., Anna Nagar" autocomplete="off">
+              </div>
+              <div class="input-group">
+                <span class="input-icon">🏁</span>
+                <input type="text" id="endLocation" placeholder="End: e.g., T. Nagar" autocomplete="off">
+              </div>
+              <div class="route-suggestions">
+                <span class="suggestion-chip" onclick="fillRoute('Anna Nagar', 'T. Nagar')">Anna Nagar → T. Nagar</span>
+                <span class="suggestion-chip" onclick="fillRoute('Tambaram', 'Adyar')">Tambaram → Adyar</span>
+                <span class="suggestion-chip" onclick="fillRoute('Chennai Central', 'Marina Beach')">Central → Marina</span>
+              </div>
+              <button type="button" class="btn btn-primary btn-block" id="scanRouteBtn" onclick="scanRoute()">
+                🔍 Scan Route for Risks
+              </button>
+            </form>
+            <div class="loading" id="routeLoading">
+              <div class="spinner"></div>
+              <span class="loading-text">Analyzing route risks with AI…</span>
+            </div>
+            <div class="alert-box" id="routeAlert">
+              <div class="alert-label">⚠️ Condensed Alert</div>
+              <div class="alert-text" id="routeAlertText"></div>
+              <div class="alert-actions">
+                <button class="btn btn-sm btn-secondary" onclick="shareAlert()">📋 Copy Alert</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ask About Area Panel -->
+        <div class="panel" id="askPanel">
+          <div class="panel-header" onclick="togglePanel('askPanel')">
+            <div class="panel-title">
+              <span class="icon">🤖</span> Ask About This Area
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
+              Pan the map to any area in Chennai, then click below to get an AI-powered risk analysis.
+            </p>
+            <button class="btn btn-primary btn-block" id="askAreaBtn" onclick="askAboutArea()">
+              🧠 Analyze Current Area
+            </button>
+            <div class="loading" id="askLoading">
+              <div class="spinner"></div>
+              <span class="loading-text">AI analyzing risk patterns…</span>
+            </div>
+            <div class="ask-area-result" id="askResult">
+              <div class="answer-label">🧠 AI Analysis</div>
+              <div class="answer-text" id="askResultText"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Risks Panel -->
+        <div class="panel" id="risksPanel">
+          <div class="panel-header" onclick="togglePanel('risksPanel')">
+            <div class="panel-title">
+              <span class="icon">🔴</span> Top Risks
+            </div>
+            <span class="panel-badge" id="riskCount">0</span>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <div class="risk-list" id="riskList">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Report a Risk Panel -->
+        <div class="panel collapsed" id="reportPanel">
+          <div class="panel-header" onclick="togglePanel('reportPanel')">
+            <div class="panel-title">
+              <span class="icon">📝</span> Report a Risk
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <form class="report-form" id="reportForm" onsubmit="return false;">
+              <div class="form-group">
+                <label>Risk Type</label>
+                <select id="reportType">
+                  <option value="sudden_brake">🛑 Sudden Braking Zone</option>
+                  <option value="blind_turn">🔄 Blind Turn</option>
+                  <option value="habitual_violation">⚠️ Habitual Violation</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Severity (1-5)</label>
+                <select id="reportSeverity">
+                  <option value="3">3 – Moderate</option>
+                  <option value="1">1 – Minor</option>
+                  <option value="2">2 – Low</option>
+                  <option value="4">4 – High</option>
+                  <option value="5">5 – Critical</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Description</label>
+                <textarea id="reportDescription" placeholder="Describe the risk in detail..."></textarea>
+              </div>
+              <div class="form-group">
+                <label>Road Name</label>
+                <input type="text" id="reportRoadName" placeholder="e.g., Anna Salai">
+              </div>
+              <div class="form-group">
+                <label>Landmark (optional)</label>
+                <input type="text" id="reportLandmark" placeholder="e.g., near Spencer Plaza">
+              </div>
+              <div class="form-group">
+                <label>Location</label>
+                <div class="location-picker-hint" id="locationPickerHint">
+                  📍 Click on the map to pick a location
+                </div>
+                <div class="picked-coords" id="pickedCoords" style="display:none;">
+                  Lat: <span id="pickedLat">—</span>, Lng: <span id="pickedLng">—</span>
+                </div>
+              </div>
+              <button type="button" class="btn btn-primary btn-block" onclick="submitReport()">
+                📤 Submit Risk Report
+              </button>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- ─── Map ─────────────────────────────────────────────────────────────── -->
+    <div class="map-container">
+      <div id="map"></div>
+
+      <!-- Map Controls -->
+      <div class="map-controls">
+        <button class="map-control-btn" id="heatmapToggle" onclick="toggleHeatmap()">
+          🌡️
+          <span class="tooltip">Toggle Heatmap</span>
+        </button>
+        <button class="map-control-btn" id="emergencyBtn" onclick="showEmergency()">
+          🚨
+          <span class="tooltip">Emergency Services</span>
+        </button>
+        <button class="map-control-btn" id="centerBtn" onclick="centerMap()">
+          🎯
+          <span class="tooltip">Center on Chennai</span>
+        </button>
+      </div>
+
+      <!-- Emergency Overlay -->
+      <div class="emergency-overlay" id="emergencyOverlay">
+        <div class="emergency-header">
+          <h3>🚨 Emergency Services</h3>
+          <button class="emergency-close" onclick="closeEmergency()">✕</button>
+        </div>
+        <div class="emergency-list" id="emergencyList">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+  <script src="/js/map.js"></script>
+  <script src="/js/chat.js"></script>
+</body>
+</html>
