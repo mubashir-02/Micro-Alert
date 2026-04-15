@@ -56,6 +56,7 @@ let routeDestinationMarkers = [];
 let pickingLocation = false;
 let pickedLatLng = null;
 let emergencyMarkers = [];
+let currentZoom = DEFAULT_ZOOM;
 
 // ─── Map Initialization ────────────────────────────────────────────────────────
 function initMap() {
@@ -78,6 +79,10 @@ function initMap() {
 
   // Map click handler for location picking
   map.on('click', onMapClick);
+  map.on('zoomend', () => {
+    currentZoom = map.getZoom();
+    updateRiskMarkerStyles();
+  });
 
   // Load risks
   loadAllRisks();
@@ -107,13 +112,30 @@ function renderMarkers() {
 
   allRisks.forEach(risk => {
     const [lng, lat] = risk.location.coordinates;
-    const marker = L.marker([lat, lng], {
-      icon: createRiskIcon(risk)
-    });
+    const marker = L.circleMarker([lat, lng], getRiskCircleStyle(risk, currentZoom));
 
     marker.bindPopup(createPopupHTML(risk), {
       maxWidth: 300,
       className: 'risk-popup'
+    });
+
+    marker.bindTooltip(createRiskTooltipHTML(risk), {
+      direction: 'top',
+      offset: [0, -8],
+      opacity: 1,
+      className: 'risk-tooltip',
+      sticky: true
+    });
+
+    marker.on('mouseover', () => {
+      marker.setStyle({
+        weight: Math.max(2.5, (marker.options.weight || 2) + 1),
+        fillOpacity: Math.min(0.55, (marker.options.fillOpacity || 0.35) + 0.12)
+      });
+      if (marker.bringToFront) marker.bringToFront();
+    });
+    marker.on('mouseout', () => {
+      marker.setStyle(getRiskCircleStyle(risk, currentZoom));
     });
 
     marker.addTo(map);
@@ -121,15 +143,79 @@ function renderMarkers() {
   });
 }
 
-// ─── Create Custom Icon ─────────────────────────────────────────────────────────
-function createRiskIcon(risk) {
-  return L.divIcon({
-    html: `<div class="custom-marker ${risk.type}">${risk.severity}</div>`,
-    className: '',
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-    popupAnchor: [0, -16]
+// ─── Risk Marker Styling (Clean, Zoom-scaled Circles) ───────────────────────────
+function getRiskCircleStyle(risk, zoom) {
+  const s = Math.max(1, Math.min(5, Number(risk.severity) || 1));
+
+  // Radius grows a bit with zoom, but stays compact to reduce clutter
+  const zoomFactor = Math.max(0, zoom - 11); // zoom 12 => 1, 16 => 5
+  const base = 4.5 + (s * 0.7);
+  const radius = Math.min(12, base + zoomFactor * 0.55);
+
+  let color = '#eab308'; // low
+  let fill = 'rgba(234, 179, 8, 0.20)';
+  if (s === 3) {
+    color = '#f97316';
+    fill = 'rgba(249, 115, 22, 0.22)';
+  } else if (s >= 4) {
+    color = '#ef4444';
+    fill = 'rgba(239, 68, 68, 0.20)';
+  }
+
+  return {
+    radius,
+    color,
+    weight: 2,
+    opacity: 0.85,
+    fillColor: fill,
+    fillOpacity: 0.35,
+    className: `risk-circle s${s}`
+  };
+}
+
+function updateRiskMarkerStyles() {
+  if (!riskMarkers || riskMarkers.length === 0) return;
+  riskMarkers.forEach((layer, idx) => {
+    const risk = allRisks[idx];
+    if (!risk || !layer || !layer.setStyle) return;
+    layer.setStyle(getRiskCircleStyle(risk, currentZoom));
   });
+}
+
+function createRiskTooltipHTML(risk) {
+  const typeLabels = {
+    sudden_brake: 'Sudden Braking',
+    blind_turn: 'Blind Turn',
+    habitual_violation: 'Habitual Violation',
+    accident: 'Accident Zone'
+  };
+
+  const s = Math.max(1, Math.min(5, Number(risk.severity) || 1));
+  const band = s >= 4 ? 'high' : s === 3 ? 'med' : 'low';
+  const bandLabel = s >= 4 ? 'High' : s === 3 ? 'Medium' : 'Low';
+
+  const title = (risk.roadName || 'Unknown road').toString();
+  const desc = (risk.description || '').toString();
+  const type = typeLabels[risk.type] || (risk.type || 'Risk');
+
+  return `
+    <div class="risk-tt">
+      <div class="risk-tt-top">
+        <div class="risk-tt-title">${escapeHTML(title)}</div>
+        <div class="risk-tt-chip ${band}">${bandLabel} • S${s}</div>
+      </div>
+      <div class="risk-tt-desc">${escapeHTML(type)}${desc ? ` — ${escapeHTML(desc)}` : ''}</div>
+    </div>
+  `;
+}
+
+function escapeHTML(str) {
+  return String(str)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 // ─── Create Popup HTML ──────────────────────────────────────────────────────────
