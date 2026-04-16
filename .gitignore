@@ -1,1 +1,6 @@
 .env
+node_modules/
+public/uploads/
+server.out.log
+server.err.log
+npm-debug.log*

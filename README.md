@@ -2,6 +2,43 @@
   <img src="https://img.shields.io/badge/⚡-MICRO--ALERT-FF6B35?style=for-the-badge&labelColor=1a1a2e&color=FF6B35" alt="Micro-Alert" height="60"/>
 </p>
 
+---
+
+## Deploying
+
+This repo is now set up for container-based deployment and Railway.
+
+### Railway
+
+1. Push this repository to GitHub.
+2. In Railway, create a new project from the GitHub repo.
+3. Add a MySQL service in the same Railway project.
+4. Set the app service environment variables:
+
+```env
+DATABASE_URL=${{MySQL.MYSQL_URL}}
+PORT=3000
+LLM_PROVIDER=nvidia
+NVIDIA_API_KEY=your_key_here
+DB_SYNC_ALTER=false
+MYSQL_SSL=false
+```
+
+5. Deploy the app service. Railway will use `railway.json` and the `/health` endpoint.
+
+### Docker
+
+```bash
+docker build -t micro-alert .
+docker run --env-file .env -p 3000:3000 micro-alert
+```
+
+### Notes
+
+- `DATABASE_URL` is preferred for cloud deployment.
+- Set `MYSQL_SSL=true` if your hosted MySQL provider requires SSL.
+- File uploads are stored on local disk, so they are ephemeral on most cloud platforms unless you attach persistent storage.
+
 <h1 align="center">🚨 Micro-Alert</h1>
 <h3 align="center">AI-Powered Road Risk Intelligence & Smart Navigation Platform</h3>
 

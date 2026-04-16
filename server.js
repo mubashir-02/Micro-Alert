@@ -9,6 +9,9 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 const PORT = process.env.PORT || 3000;
+const SHOULD_ALTER_SCHEMA = ['1', 'true', 'yes', 'on'].includes(
+  String(process.env.DB_SYNC_ALTER || '').toLowerCase()
+);
 
 // ─── Middleware ─────────────────────────────────────────────────────────────────
 app.use(express.json());
@@ -64,6 +67,24 @@ app.get('/', (req, res) => {
 });
 
 // ─── Socket.io ──────────────────────────────────────────────────────────────────
+app.get('/health', async (req, res) => {
+  try {
+    await sequelize.authenticate();
+    res.json({
+      ok: true,
+      database: 'connected',
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(503).json({
+      ok: false,
+      database: 'disconnected',
+      error: err.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 io.on('connection', (socket) => {
   console.log('🔌 User connected:', socket.id);
 
@@ -94,7 +115,7 @@ io.on('connection', (socket) => {
 sequelize.authenticate()
   .then(() => {
     console.log('✅ MySQL connected to microalert');
-    return sequelize.sync({ alter: true });
+    return sequelize.sync({ alter: SHOULD_ALTER_SCHEMA });
   })
   .then(() => {
     console.log('✅ Database tables synced');

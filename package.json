@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Micro-Moments of Road Risk – Identifies, aggregates, and communicates small repeated road risks to everyday commuters in Chennai, India.",
   "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
