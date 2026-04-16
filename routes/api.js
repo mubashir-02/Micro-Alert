@@ -329,7 +329,7 @@ router.post('/llm/condensed-alert', async (req, res) => {
 // ─── POST /api/risks/report ────────────────────────────────────────────────────
 router.post('/risks/report', async (req, res) => {
   try {
-    const { type, description, lat, lng, roadName, landmark, severity, timeOfDay, weather } = req.body;
+    const { type, description, lat, lng, roadName, landmark, severity, timeOfDay, weather, photoUrl } = req.body;
 
     if (!type || !description || !lat || !lng) {
       return res.status(400).json({ success: false, error: 'type, description, lat, and lng are required' });
@@ -345,7 +345,8 @@ router.post('/risks/report', async (req, res) => {
       weather: weather || 'clear',
       roadName: roadName || 'Unknown Road',
       landmark: landmark || '',
-      verified: false
+      verified: false,
+      photoUrl: photoUrl || null
     });
 
     // Map to frontend format
@@ -362,6 +363,264 @@ router.post('/risks/report', async (req, res) => {
     res.json({ success: true, data: mapped });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── POST /api/llm/voice-navigate ──────────────────────────────────────────────
+router.post('/llm/voice-navigate', async (req, res) => {
+  try {
+    const { command, lat, lng, speed, destination, nearbyRisks, language } = req.body;
+    if (!command) {
+      return res.status(400).json({ success: false, error: 'command is required' });
+    }
+
+    const langInstructions = {
+      'en': 'Respond in English.',
+      'hi': 'Respond in Hindi (Devanagari script). Use simple Hindi.',
+      'te': 'Respond in Telugu (Telugu script). Use simple Telugu.',
+      'ta': 'Respond in Tamil (Tamil script). Use simple Tamil.'
+    };
+
+    const langInstruction = langInstructions[language] || langInstructions['en'];
+
+    const riskContext = (nearbyRisks && nearbyRisks.length > 0)
+      ? nearbyRisks.slice(0, 5).map(r =>
+          `- ${r.type} on ${r.roadName}${r.landmark ? ' near ' + r.landmark : ''}: severity ${r.severity}/5. ${r.description}`
+        ).join('\n')
+      : 'No nearby risks detected.';
+
+    const systemPrompt = `You are MicroAlert Voice Navigator — an AI driving assistant for road safety in India.
+You help drivers by:
+1. Providing turn-by-turn navigation guidance when asked
+2. Warning about nearby hazards and how to avoid them
+3. Suggesting safer alternative routes
+4. Giving real-time safety tips based on speed, weather, and time of day
+5. Responding to emergency situations quickly
+
+Context:
+- User's current location: lat ${lat || 'unknown'}, lng ${lng || 'unknown'}
+- Current speed: ${speed || 0} km/h
+- Destination: ${destination || 'not set'}
+- Nearby risks:\n${riskContext}
+
+Rules:
+- Keep responses concise (2-3 sentences max) since they will be spoken aloud
+- Be proactive about safety warnings
+- If the user is speeding (>60 km/h in urban), warn them
+- ${langInstruction}`;
+
+    const answer = await callLLM(systemPrompt, command);
+    res.json({ success: true, answer });
+  } catch (err) {
+    console.error('Voice Navigate error:', err.message);
+    res.status(500).json({ success: false, error: 'Voice navigation service unavailable.' });
+  }
+});
+
+// ─── POST /api/llm/journey-update ──────────────────────────────────────────────
+router.post('/llm/journey-update', async (req, res) => {
+  try {
+    const { lat, lng, speed, destination, nearbyRisks, weather, timeOfDay, language } = req.body;
+
+    const langInstructions = {
+      'en': 'Respond in English.',
+      'hi': 'Respond in Hindi (Devanagari script).',
+      'te': 'Respond in Telugu (Telugu script).',
+      'ta': 'Respond in Tamil (Tamil script).'
+    };
+
+    const langInstruction = langInstructions[language] || langInstructions['en'];
+
+    const riskContext = (nearbyRisks && nearbyRisks.length > 0)
+      ? nearbyRisks.slice(0, 5).map(r =>
+          `- ${r.type} on ${r.roadName}: severity ${r.severity}/5. ${r.description}`
+        ).join('\n')
+      : 'No immediate risks detected.';
+
+    const systemPrompt = `You are MicroAlert Journey Assistant. Generate a brief, spoken safety update for a driver currently on the road.
+
+Context:
+- Location: lat ${lat}, lng ${lng}
+- Speed: ${speed || 0} km/h
+- Destination: ${destination || 'not known'}
+- Weather: ${weather || 'clear'}
+- Time: ${timeOfDay || 'afternoon'}
+- Nearby risks:\n${riskContext}
+
+Rules:
+- Produce EXACTLY ONE sentence — a short, actionable safety update
+- Mention the most important nearby hazard if any
+- If speed is too high, warn about it
+- Be encouraging but alert
+- ${langInstruction}`;
+
+    const answer = await callLLM(systemPrompt, 'Generate a journey safety update now.');
+    res.json({ success: true, update: answer });
+  } catch (err) {
+    console.error('Journey Update error:', err.message);
+    res.status(500).json({ success: false, error: 'Journey update failed.' });
+  }
+});
+
+// ─── POST /api/llm/nlp-process — Full NLP Voice Pipeline ───────────────────────
+router.post('/llm/nlp-process', async (req, res) => {
+  try {
+    const {
+      rawInput,
+      conversationHistory,   // last 5 turns [{role, content}]
+      lat, lng, speed,
+      destination,
+      nearbyRisks,
+      language,
+      sessionContext         // {lastMentionedLocation, lastIntent, pendingSlots}
+    } = req.body;
+
+    if (!rawInput) {
+      return res.status(400).json({ success: false, error: 'rawInput is required' });
+    }
+
+    const langInstructions = {
+      'en': 'Respond in English.',
+      'hi': 'Respond in Hindi (Devanagari script). Use simple conversational Hindi.',
+      'te': 'Respond in Telugu (Telugu script). Use simple conversational Telugu.',
+      'ta': 'Respond in Tamil (Tamil script). Use simple conversational Tamil.'
+    };
+    const langInstruction = langInstructions[language] || langInstructions['en'];
+
+    const riskContext = (nearbyRisks && nearbyRisks.length > 0)
+      ? nearbyRisks.slice(0, 8).map(r =>
+          `- ${r.type} on ${r.roadName}${r.landmark ? ' near ' + r.landmark : ''}: severity ${r.severity}/5. ${r.description}. Time: ${r.timeOfDay || 'unknown'}, Weather: ${r.weather || 'unknown'}`
+        ).join('\n')
+      : 'No nearby risks in database.';
+
+    const sessionCtx = sessionContext || {};
+    const lastLoc = sessionCtx.lastMentionedLocation || null;
+    const lastIntent = sessionCtx.lastIntent || null;
+    const pendingSlots = sessionCtx.pendingSlots || null;
+
+    // Build conversation context string
+    let convContext = '';
+    if (conversationHistory && conversationHistory.length > 0) {
+      convContext = '\n\nRecent conversation:\n' + conversationHistory.slice(-5).map(h =>
+        `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.content}`
+      ).join('\n');
+    }
+
+    const systemPrompt = `You are an intelligent NLP engine embedded in MicroAlert — a road safety platform for Indian commuters. You process raw voice input (often noisy, incomplete, with filler words and regional accents from speech-to-text) and produce a structured JSON response.
+
+## YOUR JOB
+Analyze the user's voice input and produce ONLY a valid JSON object (no markdown, no backticks, just raw JSON).
+
+## INTENT CLASSIFICATION — classify into exactly one:
+- "REPORT_RISK" — user wants to report a hazard (e.g., "there's a blind turn near station road", "pothole on MG road")
+- "QUERY_RISK" — user wants to know about risks near a location (e.g., "is it safe near marina?", "any dangers ahead?")
+- "NAVIGATE" — user wants route guidance avoiding risks (e.g., "take me to airport avoiding danger", "safest route to T Nagar")
+- "ALERT_STATUS" — user wants current alerts/notifications (e.g., "any new warnings?", "what's the latest?")
+- "EMERGENCY" — user needs emergency dispatch (ambulance, police, fire, roadside help)
+- "JOURNEY_START" — user wants to begin a monitored journey (e.g., "start journey to Marina Beach")
+- "JOURNEY_STOP" — user wants to end a journey
+- "CAMERA" — user wants to take a hazard photo
+- "SPEED_CHECK" — user asks about their driving/speed rating
+- "LANGUAGE_SWITCH" — user wants to change language
+- "CONFIRM" — yes/okay/sure/correct
+- "CANCEL" — stop/go back/cancel
+- "HELP" — confused or asking how to use
+- "UNKNOWN" — cannot determine; ask for clarification
+
+## ENTITY EXTRACTION — extract from input:
+- "location": street names, landmarks, areas, cities, relative positions ("near", "before", "after"). If user says "that spot" or "same place" or "there", use last_mentioned_location from context: "${lastLoc || 'none'}"
+- "risk_type": one of [sudden_braking, blind_turn, pothole, habitual_violation, flooding, poor_lighting, overspeeding, accident, road_damage, congestion] or null
+- "time_context": morning/evening/rush_hour/night/today/yesterday/always/recurring or null
+- "severity": mild/moderate/dangerous/very_dangerous (infer from urgency words if not explicit) or null
+- "emergency_type": ambulance/police/fire/roadside or null (only for EMERGENCY intent)
+- "destination": extracted destination for NAVIGATE/JOURNEY_START or null
+- "target_language": en/hi/te/ta or null (only for LANGUAGE_SWITCH)
+
+## NOISE TOLERANCE rules:
+- Strip filler words: "um", "uh", "like", "you know", "actually", "basically"
+- Handle partial sentences: "near the school... pothole" → REPORT_RISK at school with pothole
+- Fix STT errors: "blink turn" → "blind turn", "breaking zone" → "braking zone", "accidents own" → "accident zone"
+- Deduplicate repetition: "the turn the turn near mall" → one entity
+- Handle Hinglish: "gaadi rokti hai" = sudden braking, "mod" = turn, "sadak" = road, "khatarnak" = dangerous
+
+## CONTEXT from previous turns:
+- Last mentioned location: "${lastLoc || 'none'}"
+- Last intent: "${lastIntent || 'none'}"
+- Pending slots needing fill: ${pendingSlots ? JSON.stringify(pendingSlots) : 'none'}
+${convContext}
+
+## NEARBY RISK DATA:
+${riskContext}
+
+## USER CONTEXT:
+- Location: lat ${lat || 'unknown'}, lng ${lng || 'unknown'}
+- Speed: ${speed || 0} km/h
+- Current destination: ${destination || 'none'}
+
+## RESPONSE FORMAT — output ONLY this JSON:
+{
+  "intent": "<classified intent>",
+  "entities": {
+    "location": "<extracted or null>",
+    "risk_type": "<extracted or null>",
+    "time_context": "<extracted or null>",
+    "severity": "<inferred or null>",
+    "emergency_type": "<ambulance|police|fire|roadside or null>",
+    "destination": "<for NAVIGATE/JOURNEY_START or null>",
+    "target_language": "<en|hi|te|ta or null>"
+  },
+  "response_text": "<short conversational reply, max 2 sentences, to speak back>",
+  "follow_up_question": "<single clarifying question if key slots are missing, else null>",
+  "action": "<platform action: show_map | report_risk | get_alerts | navigate | start_journey | stop_journey | dispatch_emergency | open_camera | check_speed | switch_language | analyze_risk | scan_route | clarify | help | none>",
+  "context_update": {
+    "lastMentionedLocation": "<location from this turn to remember, or null>",
+    "lastIntent": "<this turn's intent>"
+  }
+}
+
+## RESPONSE TONE:
+- Max 2 sentences — users are driving
+- Be direct and reassuring: "Got it, marking that blind turn near Station Road."
+- Don't say "I don't understand" — say "Can you say that differently? I'm here to help with road risks."
+- ${langInstruction}`;
+
+    const answer = await callLLM(systemPrompt, `Voice input: "${rawInput}"`);
+
+    // Parse the LLM's JSON response
+    let parsed = null;
+    try {
+      // Try to extract JSON from the response (LLM might wrap in backticks)
+      let jsonStr = answer;
+      // Remove markdown code fences if present
+      jsonStr = jsonStr.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      // Find the JSON object
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      }
+    } catch (parseErr) {
+      console.warn('NLP JSON parse failed, raw output:', answer);
+    }
+
+    if (parsed && parsed.intent) {
+      res.json({ success: true, data: parsed });
+    } else {
+      // Fallback: return a basic UNKNOWN response
+      res.json({
+        success: true,
+        data: {
+          intent: 'UNKNOWN',
+          entities: { location: null, risk_type: null, time_context: null, severity: null, emergency_type: null, destination: null, target_language: null },
+          response_text: "Can you say that differently? I'm here to help with road safety, navigation, and hazard reporting.",
+          follow_up_question: null,
+          action: 'clarify',
+          context_update: { lastMentionedLocation: null, lastIntent: 'UNKNOWN' }
+        }
+      });
+    }
+  } catch (err) {
+    console.error('NLP Process error:', err.message);
+    res.status(500).json({ success: false, error: 'NLP processing failed: ' + err.message });
   }
 });
 

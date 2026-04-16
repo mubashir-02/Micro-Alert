@@ -41,6 +41,9 @@ app.use('/api/prediction', predictionRoutes);
 const routingRoutes = require('./routes/routing');
 app.use('/api/routing', routingRoutes);
 
+const uploadRoutes = require('./routes/upload');
+app.use('/api/upload', uploadRoutes);
+
 // Main page
 app.get('/', (req, res) => {
   res.render('index', {

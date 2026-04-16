@@ -634,6 +634,18 @@ body {
   background: var(--brand-primary-soft);
 }
 .voice-panel-header h3 { font-size: 14px; font-weight: 600; flex: 1; }
+.voice-nlp-badge {
+  font-size: 9px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 1px; padding: 2px 8px; border-radius: 10px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(6, 182, 212, 0.2));
+  color: var(--accent-purple); border: 1px solid rgba(139, 92, 246, 0.3);
+  animation: nlpGlow 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes nlpGlow {
+  0%, 100% { box-shadow: 0 0 4px rgba(139, 92, 246, 0.2); }
+  50% { box-shadow: 0 0 12px rgba(139, 92, 246, 0.4); }
+}
 .voice-status { font-size: 10px; color: var(--text-muted); }
 .voice-panel-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; }
 
@@ -942,6 +954,188 @@ body {
 
 .map-control-btn.locating { animation: locatingSpin 1s linear infinite; border-color: var(--brand-primary); color: var(--brand-primary); }
 
+/* ─── Camera Capture Button ──────────────────────────────────────────────────── */
+.camera-capture-row { display: flex; gap: 8px; }
+.camera-btn {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(139, 92, 246, 0.12)) !important;
+  border: 1px dashed rgba(6, 182, 212, 0.4) !important;
+  color: var(--accent-cyan) !important;
+  transition: all var(--transition-fast);
+}
+.camera-btn:hover {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(139, 92, 246, 0.2)) !important;
+  border-color: var(--accent-cyan) !important;
+  transform: translateY(-1px);
+}
+
+/* ─── Photo Preview in Report Form ───────────────────────────────────────────── */
+.photo-preview-container {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-top: 8px; padding: 8px;
+  background: rgba(6, 182, 212, 0.06);
+  border: 1px solid rgba(6, 182, 212, 0.15);
+  border-radius: var(--radius-md);
+}
+.photo-preview-item {
+  position: relative; width: 72px; height: 72px;
+  border-radius: var(--radius-sm); overflow: hidden;
+  border: 2px solid rgba(6, 182, 212, 0.3);
+  transition: transform var(--transition-fast);
+}
+.photo-preview-item:hover { transform: scale(1.08); }
+.photo-preview-item img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.photo-remove-btn {
+  position: absolute; top: 2px; right: 2px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(239, 68, 68, 0.9); color: white;
+  border: none; font-size: 10px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--transition-fast);
+  line-height: 1;
+}
+.photo-remove-btn:hover { background: #ef4444; }
+
+/* ─── Photo in Popup (Risk Card) ─────────────────────────────────────────────── */
+.popup-photo-section {
+  margin-bottom: 12px;
+}
+.popup-photo-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--accent-cyan);
+  margin-bottom: 6px; display: flex; align-items: center; gap: 4px;
+}
+.popup-photo-wrapper {
+  position: relative; border-radius: var(--radius-md);
+  overflow: hidden; border: 1px solid rgba(6, 182, 212, 0.2);
+  cursor: pointer; max-height: 180px;
+}
+.popup-photo {
+  width: 100%; height: auto; max-height: 180px;
+  object-fit: cover; display: block;
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+.popup-photo:hover {
+  transform: scale(1.03);
+  filter: brightness(1.1);
+}
+.popup-photo-badge {
+  position: absolute; bottom: 6px; right: 6px;
+  background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(8px);
+  padding: 3px 8px; border-radius: 4px;
+  font-size: 9px; font-weight: 700; color: var(--accent-cyan);
+  letter-spacing: 0.5px; text-transform: uppercase;
+  border: 1px solid rgba(6, 182, 212, 0.25);
+}
+
+/* ─── Photo Lightbox ─────────────────────────────────────────────────────────── */
+.photo-lightbox {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.92); backdrop-filter: blur(12px);
+  z-index: 20000; align-items: center; justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+.photo-lightbox.visible { display: flex; }
+.lightbox-content {
+  position: relative; max-width: 90vw; max-height: 90vh;
+  border-radius: var(--radius-lg); overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.lightbox-content img {
+  max-width: 90vw; max-height: 90vh;
+  object-fit: contain; display: block;
+}
+.lightbox-close {
+  position: absolute; top: 12px; right: 12px;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white; font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition-fast);
+}
+.lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+/* ─── Voice Language Selector ────────────────────────────────────────────────── */
+.voice-lang-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px;
+  background: rgba(122, 46, 58, 0.04);
+  border-bottom: 1px solid var(--border-color);
+}
+.voice-lang-label {
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  white-space: nowrap;
+}
+.voice-lang-options {
+  display: flex; gap: 4px; flex: 1;
+}
+.lang-option {
+  padding: 4px 10px; border-radius: 16px;
+  font-size: 11px; font-weight: 600;
+  background: var(--bg-input); border: 1px solid var(--border-color);
+  color: var(--text-secondary); cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+.lang-option:hover {
+  border-color: var(--brand-primary);
+  background: var(--brand-primary-soft);
+  color: var(--text-accent);
+}
+.lang-option.active {
+  background: var(--brand-primary);
+  color: white; border-color: var(--brand-primary);
+  box-shadow: 0 2px 8px var(--brand-primary-glow);
+}
+
+/* ─── Voice Journey Status Bar ───────────────────────────────────────────────── */
+.voice-journey-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.08));
+  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+}
+.journey-indicator {
+  display: flex; align-items: center; gap: 8px;
+}
+.journey-pulse {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent-emerald);
+  animation: journeyPulse 1.5s ease-in-out infinite;
+}
+.journey-text {
+  font-size: 11px; font-weight: 600;
+  color: var(--accent-emerald);
+}
+.journey-stop-btn {
+  padding: 4px 10px; border-radius: 6px;
+  font-size: 10px; font-weight: 700;
+  background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.25);
+  color: var(--risk-red); cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: all var(--transition-fast);
+}
+.journey-stop-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: var(--risk-red);
+}
+
+@keyframes journeyPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.5); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* ─── Responsive ─────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .sidebar {
@@ -957,6 +1151,8 @@ body {
   .bottom-cards { flex-direction: column; right: 16px; }
   .nav-location { display: none; }
   .speed-rating-badge .speed-stars { display: none; }
+  .voice-panel { width: 300px; }
+  .voice-lang-options { flex-wrap: wrap; }
 }
 @media (min-width: 769px) and (max-width: 1100px) {
   .sidebar { width: 320px; min-width: 320px; }

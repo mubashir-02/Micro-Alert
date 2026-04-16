@@ -248,6 +248,16 @@
                   Lat: <span id="pickedLat">—</span>, Lng: <span id="pickedLng">—</span>
                 </div>
               </div>
+              <div class="form-group">
+                <label>Hazard Photo</label>
+                <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;" onchange="handleCameraCapture(this)">
+                <div class="camera-capture-row">
+                  <button type="button" class="btn btn-secondary btn-block camera-btn" onclick="openCamera()">
+                    📸 Take Photo / Upload
+                  </button>
+                </div>
+                <div class="photo-preview-container" id="photoPreviewContainer" style="display:none;"></div>
+              </div>
               <button type="button" class="btn btn-primary btn-block" onclick="submitReport()">
                 📤 Submit Risk Report
               </button>
@@ -275,6 +285,10 @@
         <button class="map-control-btn" id="locateBtn" onclick="locateMe()">
           📍
           <span class="tooltip">My Location</span>
+        </button>
+        <button class="map-control-btn" id="cameraBtn" onclick="openCamera()">
+          📷
+          <span class="tooltip">Capture Hazard</span>
         </button>
         <button class="map-control-btn" id="centerBtn" onclick="centerMap()">
           🎯
@@ -334,11 +348,40 @@
       <div class="voice-panel" id="voicePanel">
         <div class="voice-panel-header">
           <h3>🎙️ Voice Assistant</h3>
+          <span class="voice-nlp-badge">🧠 NLP</span>
           <span class="voice-status" id="voiceStatus">Say "wake up" to activate</span>
           <button onclick="closeVoicePanel()" class="voice-panel-close">✕</button>
         </div>
+        <!-- Language Selector -->
+        <div class="voice-lang-bar">
+          <span class="voice-lang-label">🌐 Language:</span>
+          <div class="voice-lang-options">
+            <button class="lang-option active" data-lang="en" onclick="setVoiceLanguage('en')">EN</button>
+            <button class="lang-option" data-lang="hi" onclick="setVoiceLanguage('hi')">हिन्दी</button>
+            <button class="lang-option" data-lang="te" onclick="setVoiceLanguage('te')">తెలుగు</button>
+            <button class="lang-option" data-lang="ta" onclick="setVoiceLanguage('ta')">தமிழ்</button>
+          </div>
+        </div>
+        <!-- Journey Status Bar -->
+        <div class="voice-journey-bar" id="voiceJourneyBar" style="display:none;">
+          <div class="journey-indicator">
+            <span class="journey-pulse"></span>
+            <span class="journey-text" id="journeyStatusText">Journey Active</span>
+          </div>
+          <button class="journey-stop-btn" onclick="stopJourney()">⏹ End</button>
+        </div>
         <div class="voice-transcript" id="voiceTranscript">
-          <div class="voice-msg system">👋 Hi! Say <strong>"wake up"</strong> to start, then ask me anything about routes, hazards, or dispatch emergency services.</div>
+          <div class="voice-msg system">👋 Hi! Say <strong>"wake up"</strong> to activate me.
+            <br><br>🧠 <strong>I understand natural language!</strong> Just talk to me like a friend:
+            <br>• "There's a pothole near the school"
+            <br>• "Is it safe near Marina Beach?"
+            <br>• "Take me to the airport avoiding risky spots"
+            <br>• "Start journey to T. Nagar"
+            <br>• "Any new warnings today?"
+            <br><br>📸 <strong>Capture hazards:</strong> "Take a photo"
+            <br>🚑 <strong>Emergency:</strong> "Call ambulance"
+            <br>🌐 <strong>Languages:</strong> English · Hindi · Telugu · Tamil
+          </div>
         </div>
         <div class="voice-controls">
           <button class="voice-listen-btn" id="voiceListenBtn" onclick="startListening()">

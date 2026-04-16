@@ -44,6 +44,7 @@ let userLat = null, userLng = null;
 let speedWatchId = null;
 let currentSpeed = 0;
 let lastSpeedLogTime = 0;
+let capturedPhotos = []; // Hazard photos taken via camera
 
 // ─── Map Initialization ────────────────────────────────────────────────────────
 function initMap() {
@@ -162,12 +163,24 @@ function createPopupHTML(risk) {
     ? `<div style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:#4ade80;font-weight:600;">✅ Cleared by admin</div>`
     : '';
 
+  // Photo section — show hazard photo if available
+  const photoSection = risk.photoUrl
+    ? `<div class="popup-photo-section">
+        <div class="popup-photo-label">📸 Hazard Photo</div>
+        <div class="popup-photo-wrapper">
+          <img src="${risk.photoUrl}" alt="Hazard at ${risk.roadName}" class="popup-photo" onclick="openPhotoLightbox('${risk.photoUrl}')">
+          <div class="popup-photo-badge">📷 Evidence</div>
+        </div>
+      </div>`
+    : '';
+
   return `
     <div class="popup-inner">
       <span class="popup-type ${risk.cleared ? 'cleared' : risk.type}">${risk.cleared ? '✅ Cleared' : typeLabels[risk.type]}</span>
       <h3>${risk.roadName}</h3>
       ${risk.landmark ? `<p style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">📍 ${risk.landmark}</p>` : ''}
       ${clearedBanner}
+      ${photoSection}
       <p class="popup-desc">${risk.description}</p>
       <div class="popup-meta">
         <span>${timeLabels[risk.timeOfDay]}</span>
@@ -662,11 +675,27 @@ async function submitReport() {
   if (!description) { showToast('Please enter a description', 'error'); return; }
   if (!pickedLatLng) { showToast('Please click on the map to pick a location', 'error'); return; }
 
+  // Upload photo if captured
+  let photoUrl = null;
+  if (capturedPhotos.length > 0) {
+    try {
+      const formData = new FormData();
+      formData.append('photo', capturedPhotos[0]);
+      const uploadRes = await fetch('/api/upload/photo', { method: 'POST', body: formData });
+      const uploadJson = await uploadRes.json();
+      if (uploadJson.success) {
+        photoUrl = uploadJson.data.url;
+      }
+    } catch (e) {
+      console.warn('Photo upload failed:', e);
+    }
+  }
+
   try {
     const res = await fetch('/api/risks/report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type, severity: parseInt(severity), description, roadName: roadName || 'Unknown Road', landmark, lat: pickedLatLng.lat, lng: pickedLatLng.lng })
+      body: JSON.stringify({ type, severity: parseInt(severity), description, roadName: roadName || 'Unknown Road', landmark, lat: pickedLatLng.lat, lng: pickedLatLng.lng, photoUrl })
     });
     const json = await res.json();
     if (json.success) {
@@ -685,6 +714,7 @@ async function submitReport() {
       document.getElementById('pickedCoords').style.display = 'none';
       document.getElementById('locationPickerHint').style.display = 'flex';
       pickedLatLng = null;
+      clearCapturedPhotos();
       showToast('Risk reported successfully!');
     } else { showToast('Error: ' + json.error, 'error'); }
   } catch (err) { showToast('Network error.', 'error'); }
@@ -695,6 +725,71 @@ function shareAlert() {
   if (text) {
     navigator.clipboard.writeText(`🚨 MicroAlert: ${text}`).then(() => showToast('Alert copied!')).catch(() => showToast('Alert copied!'));
   }
+}
+
+// ─── Camera / Photo Capture ─────────────────────────────────────────────────────
+function openCamera() {
+  const input = document.getElementById('cameraInput');
+  if (input) input.click();
+}
+
+function handleCameraCapture(input) {
+  const files = input.files;
+  if (!files || files.length === 0) return;
+
+  for (let i = 0; i < files.length && capturedPhotos.length < 3; i++) {
+    capturedPhotos.push(files[i]);
+  }
+
+  renderPhotoPreview();
+  showToast(`📸 ${capturedPhotos.length} photo(s) attached!`);
+}
+
+function renderPhotoPreview() {
+  const container = document.getElementById('photoPreviewContainer');
+  if (!container) return;
+
+  if (capturedPhotos.length === 0) {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+
+  container.style.display = 'flex';
+  container.innerHTML = capturedPhotos.map((photo, idx) => {
+    const url = URL.createObjectURL(photo);
+    return `<div class="photo-preview-item">
+      <img src="${url}" alt="Hazard photo ${idx + 1}">
+      <button class="photo-remove-btn" onclick="removePhoto(${idx})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function removePhoto(idx) {
+  capturedPhotos.splice(idx, 1);
+  renderPhotoPreview();
+}
+
+function clearCapturedPhotos() {
+  capturedPhotos = [];
+  renderPhotoPreview();
+  const input = document.getElementById('cameraInput');
+  if (input) input.value = '';
+}
+
+// ─── Photo Lightbox ─────────────────────────────────────────────────────────────
+function openPhotoLightbox(photoUrl) {
+  let lightbox = document.getElementById('photoLightbox');
+  if (!lightbox) {
+    lightbox = document.createElement('div');
+    lightbox.id = 'photoLightbox';
+    lightbox.className = 'photo-lightbox';
+    lightbox.onclick = () => lightbox.classList.remove('visible');
+    lightbox.innerHTML = `<div class="lightbox-content"><img id="lightboxImg" src="" alt="Hazard photo"><button class="lightbox-close" onclick="document.getElementById('photoLightbox').classList.remove('visible')">✕</button></div>`;
+    document.body.appendChild(lightbox);
+  }
+  document.getElementById('lightboxImg').src = photoUrl;
+  lightbox.classList.add('visible');
 }
 
 // ─── Autocomplete ───────────────────────────────────────────────────────────────

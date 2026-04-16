@@ -135,8 +135,9 @@ async function explainRisk(riskId) {
     return;
   }
 
-  // Find the risk data
-  const risk = allRisks.find(r => r._id === riskId);
+  // Find the risk data (use == for loose comparison since MySQL IDs are integers
+  // but the popup onclick passes them as strings)
+  const risk = allRisks.find(r => r._id == riskId || r.id == riskId);
   if (!risk) {
     resultEl.innerHTML = '<em>Risk data not found.</em>';
     resultEl.style.display = 'block';

@@ -56,6 +56,10 @@ module.exports = (sequelize) => {
     clearedAt: {
       type: DataTypes.DATE,
       defaultValue: null
+    },
+    photoUrl: {
+      type: DataTypes.STRING(500),
+      defaultValue: null
     }
   }, {
     tableName: 'risks',
