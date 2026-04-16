@@ -44,6 +44,14 @@ app.use('/api/routing', routingRoutes);
 const uploadRoutes = require('./routes/upload');
 app.use('/api/upload', uploadRoutes);
 
+// ─── Feature D: Predictive Congestion Engine (new, additive) ────────────────────
+const predictionEngineRoutes = require('./predictionEngine');
+app.use('/api/prediction-engine', predictionEngineRoutes);
+
+// ─── Feature E: Gamification System (new, additive) ─────────────────────────────
+const gamificationRoutes = require('./gamification');
+app.use('/api/game', gamificationRoutes);
+
 // Main page
 app.get('/', (req, res) => {
   res.render('index', {

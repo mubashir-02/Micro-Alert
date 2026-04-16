@@ -20,6 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
   loadStats();
   loadRisks();
   loadDispatches();
+  loadChallenges();
+  loadChallengeStats();
 });
 
 // ─── Refresh Dashboard ──────────────────────────────────────────────────────────
@@ -27,6 +29,8 @@ function refreshDashboard() {
   loadStats();
   loadRisks();
   loadDispatches();
+  loadChallenges();
+  loadChallengeStats();
   showToast('Dashboard refreshed!', 'success');
 }
 
@@ -452,4 +456,249 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CHALLENGE & TASK MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let allChallenges = [];
+
+// ─── Load Challenge Stats ───────────────────────────────────────────────────────
+async function loadChallengeStats() {
+  try {
+    const res = await fetch('/admin/api/game-stats');
+    const json = await res.json();
+    if (json.success && json.data) {
+      const d = json.data;
+      animateCounter('chTotalCount', d.totalChallenges);
+      animateCounter('chActiveCount', d.activeChallenges);
+      animateCounter('chParticipants', d.totalParticipants);
+      animateCounter('chTotalRewards', d.totalRewards);
+    }
+  } catch (err) {
+    console.warn('Challenge stats load failed:', err);
+  }
+}
+
+// ─── Load Challenges ────────────────────────────────────────────────────────────
+async function loadChallenges() {
+  try {
+    const res = await fetch('/admin/api/challenges');
+    const json = await res.json();
+
+    if (!json.success) throw new Error(json.error);
+
+    allChallenges = json.data;
+    renderChallengeGrid(allChallenges);
+  } catch (err) {
+    console.error('Challenges load failed:', err);
+    const grid = document.getElementById('challengeGrid');
+    if (grid) grid.innerHTML = '<div class="empty-state">Failed to load challenges</div>';
+  }
+}
+
+// ─── Render Challenge Grid ──────────────────────────────────────────────────────
+function renderChallengeGrid(challenges) {
+  const grid = document.getElementById('challengeGrid');
+  if (!grid) return;
+
+  if (challenges.length === 0) {
+    grid.innerHTML = '<div class="empty-state">No challenges yet. Click <b>+ New Challenge</b> to create one!</div>';
+    return;
+  }
+
+  const metricLabels = {
+    reports: '📝 Risk Reports',
+    safe_trips: '🚗 Safe Trips',
+    confirms: '✅ Confirmations',
+    photo_reports: '📸 Photo Reports',
+    safe_km: '🛣️ Safe KM',
+    peak_safe_trips: '⏰ Peak Trips'
+  };
+
+  grid.innerHTML = challenges.map(c => {
+    const isActive = c.active;
+    const source = c.source === 'auto' ? '🤖 Auto' : '👤 Admin';
+    const participants = c.participants ? c.participants.length : 0;
+    const daysLeft = Math.max(0, Math.ceil((new Date(c.endDate) - Date.now()) / (1000 * 60 * 60 * 24)));
+    const isExpired = daysLeft <= 0;
+    const metricLabel = metricLabels[c.metric] || c.metric;
+
+    return `
+      <div class="ch-card ${isActive ? '' : 'ch-inactive'} ${isExpired ? 'ch-expired' : ''}">
+        <div class="ch-card-header">
+          <div class="ch-card-name">${escapeHtml(c.name)}</div>
+          <div class="ch-card-badges">
+            <span class="ch-source-badge ${c.source || 'admin'}">${source}</span>
+            <span class="ch-status-badge ${isActive ? 'active' : 'inactive'}">${isActive ? '🟢 Active' : '⚪ Inactive'}</span>
+          </div>
+        </div>
+        <div class="ch-card-desc">${escapeHtml(c.description)}</div>
+        <div class="ch-card-meta">
+          <div class="ch-meta-item">
+            <span class="ch-meta-label">Metric</span>
+            <span class="ch-meta-value">${metricLabel}</span>
+          </div>
+          <div class="ch-meta-item">
+            <span class="ch-meta-label">Target</span>
+            <span class="ch-meta-value">${c.target}</span>
+          </div>
+          <div class="ch-meta-item">
+            <span class="ch-meta-label">Reward</span>
+            <span class="ch-meta-value ch-reward">+${c.reward} pts</span>
+          </div>
+          <div class="ch-meta-item">
+            <span class="ch-meta-label">${isExpired ? 'Expired' : 'Ends in'}</span>
+            <span class="ch-meta-value ${isExpired ? 'ch-expired-text' : ''}">${isExpired ? 'Expired' : daysLeft + 'd'}</span>
+          </div>
+        </div>
+        <div class="ch-card-footer">
+          <span class="ch-participants">👥 ${participants} joined</span>
+          <div class="ch-card-actions">
+            ${c.source !== 'auto' ? `
+              <button class="btn-ch btn-ch-toggle" onclick="toggleChallenge('${c.id}')" title="${isActive ? 'Deactivate' : 'Activate'}">
+                ${isActive ? '⏸️' : '▶️'}
+              </button>
+              <button class="btn-ch btn-ch-edit" onclick="editChallenge('${c.id}')" title="Edit">✏️</button>
+              <button class="btn-ch btn-ch-delete" onclick="deleteChallenge('${c.id}')" title="Delete">🗑️</button>
+            ` : '<span class="ch-auto-label">Auto-generated</span>'}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ─── Open Create Challenge Form ─────────────────────────────────────────────────
+function openCreateChallenge() {
+  document.getElementById('challengeFormPanel').style.display = 'block';
+  document.getElementById('challengeFormTitle').textContent = 'Create New Challenge';
+  document.getElementById('challengeSubmitBtn').textContent = 'Create Challenge';
+  document.getElementById('editChallengeId').value = '';
+
+  // Reset form
+  document.getElementById('chName').value = '';
+  document.getElementById('chDescription').value = '';
+  document.getElementById('chTarget').value = '5';
+  document.getElementById('chReward').value = '100';
+  document.getElementById('chDuration').value = '7';
+  document.getElementById('chMetric').value = 'reports';
+  document.getElementById('chActive').value = 'true';
+
+  // Scroll into view
+  document.getElementById('challengeFormPanel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ─── Close Create Challenge Form ────────────────────────────────────────────────
+function closeCreateChallenge() {
+  document.getElementById('challengeFormPanel').style.display = 'none';
+}
+
+// ─── Edit Challenge ─────────────────────────────────────────────────────────────
+function editChallenge(id) {
+  const challenge = allChallenges.find(c => c.id === id);
+  if (!challenge) return;
+
+  document.getElementById('challengeFormPanel').style.display = 'block';
+  document.getElementById('challengeFormTitle').textContent = 'Edit Challenge';
+  document.getElementById('challengeSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('editChallengeId').value = id;
+
+  document.getElementById('chName').value = challenge.name || '';
+  document.getElementById('chDescription').value = challenge.description || '';
+  document.getElementById('chTarget').value = challenge.target || 5;
+  document.getElementById('chReward').value = challenge.reward || 100;
+  document.getElementById('chMetric').value = challenge.metric || 'reports';
+  document.getElementById('chActive').value = challenge.active ? 'true' : 'false';
+
+  // Calculate duration from dates
+  const start = new Date(challenge.startDate);
+  const end = new Date(challenge.endDate);
+  const durationDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+  document.getElementById('chDuration').value = durationDays || 7;
+
+  document.getElementById('challengeFormPanel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ─── Submit Challenge (Create or Edit) ──────────────────────────────────────────
+async function submitChallenge(event) {
+  event.preventDefault();
+
+  const editId = document.getElementById('editChallengeId').value;
+  const payload = {
+    name: document.getElementById('chName').value.trim(),
+    description: document.getElementById('chDescription').value.trim(),
+    target: document.getElementById('chTarget').value,
+    reward: document.getElementById('chReward').value,
+    durationDays: document.getElementById('chDuration').value,
+    metric: document.getElementById('chMetric').value,
+    active: document.getElementById('chActive').value === 'true'
+  };
+
+  if (!payload.name || !payload.description) {
+    showToast('Name and description are required', 'error');
+    return;
+  }
+
+  try {
+    let res;
+    if (editId) {
+      // Update
+      res = await fetch(`/admin/api/challenges/${editId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      // Create
+      res = await fetch('/admin/api/challenges', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error);
+
+    showToast(editId ? 'Challenge updated! ✅' : 'Challenge created! 🎯', 'success');
+    closeCreateChallenge();
+    loadChallenges();
+    loadChallengeStats();
+  } catch (err) {
+    showToast('Failed: ' + err.message, 'error');
+  }
+}
+
+// ─── Delete Challenge ───────────────────────────────────────────────────────────
+async function deleteChallenge(id) {
+  if (!confirm('Delete this challenge permanently?')) return;
+
+  try {
+    const res = await fetch(`/admin/api/challenges/${id}`, { method: 'DELETE' });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error);
+
+    showToast('Challenge deleted 🗑️', 'success');
+    loadChallenges();
+    loadChallengeStats();
+  } catch (err) {
+    showToast('Delete failed: ' + err.message, 'error');
+  }
+}
+
+// ─── Toggle Challenge Active/Inactive ───────────────────────────────────────────
+async function toggleChallenge(id) {
+  try {
+    const res = await fetch(`/admin/api/challenges/${id}/toggle`, { method: 'PUT' });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error);
+
+    showToast(`Challenge ${json.data.active ? 'activated ▶️' : 'paused ⏸️'}`, 'success');
+    loadChallenges();
+    loadChallengeStats();
+  } catch (err) {
+    showToast('Toggle failed: ' + err.message, 'error');
+  }
 }

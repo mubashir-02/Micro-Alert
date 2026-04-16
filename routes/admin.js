@@ -323,4 +323,182 @@ router.delete('/api/hazards/:id', async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// CHALLENGE & TASK MANAGEMENT (Feature E — Admin Interface)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// In-memory challenge store (shared with gamification module via app.locals)
+function getChallengeStore(req) {
+  if (!req.app.locals.adminChallenges) {
+    req.app.locals.adminChallenges = [];
+  }
+  return req.app.locals.adminChallenges;
+}
+
+// ─── GET /admin/api/challenges ─ List all challenges ────────────────────────────
+router.get('/api/challenges', (req, res) => {
+  try {
+    const challenges = getChallengeStore(req);
+    // Also load auto-generated challenges from gamification module
+    let gameChallenges = [];
+    try {
+      const gamification = require('../gamification');
+      if (gamification.getActiveChallenges) {
+        gameChallenges = gamification.getActiveChallenges();
+      }
+    } catch (e) { /* module may not expose this */ }
+
+    const all = [
+      ...challenges.map(c => ({ ...c, source: 'admin' })),
+      ...gameChallenges.map(c => ({ ...c, source: 'auto' }))
+    ];
+
+    res.json({ success: true, data: all });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── POST /admin/api/challenges ─ Create a new challenge ────────────────────────
+router.post('/api/challenges', (req, res) => {
+  try {
+    const { name, description, target, metric, reward, rewardBadge, durationDays, active } = req.body;
+
+    if (!name || !description) {
+      return res.status(400).json({ success: false, error: 'name and description are required' });
+    }
+
+    const challenges = getChallengeStore(req);
+    const newChallenge = {
+      id: `admin_challenge_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name,
+      description,
+      target: parseInt(target) || 5,
+      metric: metric || 'reports',
+      reward: parseInt(reward) || 100,
+      rewardBadge: rewardBadge || null,
+      startDate: new Date().toISOString(),
+      endDate: new Date(Date.now() + (parseInt(durationDays) || 7) * 24 * 60 * 60 * 1000).toISOString(),
+      active: active !== false,
+      participants: [],
+      createdBy: 'admin',
+      createdAt: new Date().toISOString()
+    };
+
+    challenges.push(newChallenge);
+
+    // Push to gamification module's active challenges
+    try {
+      const gamification = require('../gamification');
+      if (gamification.addAdminChallenge) {
+        gamification.addAdminChallenge(newChallenge);
+      }
+    } catch (e) { /* silent */ }
+
+    res.json({ success: true, data: newChallenge });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── PUT /admin/api/challenges/:id ─ Update a challenge ─────────────────────────
+router.put('/api/challenges/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const challenges = getChallengeStore(req);
+    const idx = challenges.findIndex(c => c.id === id);
+
+    if (idx === -1) {
+      return res.status(404).json({ success: false, error: 'Challenge not found' });
+    }
+
+    const { name, description, target, metric, reward, active, durationDays } = req.body;
+
+    if (name) challenges[idx].name = name;
+    if (description) challenges[idx].description = description;
+    if (target) challenges[idx].target = parseInt(target);
+    if (metric) challenges[idx].metric = metric;
+    if (reward) challenges[idx].reward = parseInt(reward);
+    if (active !== undefined) challenges[idx].active = active;
+    if (durationDays) {
+      challenges[idx].endDate = new Date(
+        new Date(challenges[idx].startDate).getTime() + parseInt(durationDays) * 24 * 60 * 60 * 1000
+      ).toISOString();
+    }
+    challenges[idx].updatedAt = new Date().toISOString();
+
+    res.json({ success: true, data: challenges[idx] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── DELETE /admin/api/challenges/:id ─ Delete a challenge ──────────────────────
+router.delete('/api/challenges/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const challenges = getChallengeStore(req);
+    const idx = challenges.findIndex(c => c.id === id);
+
+    if (idx === -1) {
+      return res.status(404).json({ success: false, error: 'Challenge not found' });
+    }
+
+    challenges.splice(idx, 1);
+
+    // Remove from gamification module too
+    try {
+      const gamification = require('../gamification');
+      if (gamification.removeAdminChallenge) {
+        gamification.removeAdminChallenge(id);
+      }
+    } catch (e) { /* silent */ }
+
+    res.json({ success: true, message: 'Challenge deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── PUT /admin/api/challenges/:id/toggle ─ Toggle active status ────────────────
+router.put('/api/challenges/:id/toggle', (req, res) => {
+  try {
+    const { id } = req.params;
+    const challenges = getChallengeStore(req);
+    const challenge = challenges.find(c => c.id === id);
+
+    if (!challenge) {
+      return res.status(404).json({ success: false, error: 'Challenge not found' });
+    }
+
+    challenge.active = !challenge.active;
+    challenge.updatedAt = new Date().toISOString();
+
+    res.json({ success: true, data: challenge });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── GET /admin/api/game-stats ─ Gamification overview stats ────────────────────
+router.get('/api/game-stats', (req, res) => {
+  try {
+    const challenges = getChallengeStore(req);
+    const activeChallenges = challenges.filter(c => c.active);
+    const totalParticipants = activeChallenges.reduce((sum, c) => sum + (c.participants?.length || 0), 0);
+
+    res.json({
+      success: true,
+      data: {
+        totalChallenges: challenges.length,
+        activeChallenges: activeChallenges.length,
+        totalParticipants,
+        totalRewards: activeChallenges.reduce((sum, c) => sum + c.reward, 0)
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

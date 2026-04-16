@@ -110,6 +110,97 @@
       </div>
     </section>
 
+    <!-- ─── Challenge & Task Management ─────────────────────────────────── -->
+    <section class="challenge-mgmt-section glass" id="challengeSection">
+      <div class="section-header">
+        <h2>🎯 Challenge & Task Management</h2>
+        <div class="table-actions">
+          <button class="btn btn-sm btn-primary" onclick="openCreateChallenge()">+ New Challenge</button>
+          <button class="btn btn-sm btn-secondary" onclick="loadChallenges()">🔄 Refresh</button>
+        </div>
+      </div>
+
+      <!-- Challenge Stats -->
+      <div class="challenge-stats-row" id="challengeStatsRow">
+        <div class="ch-stat">
+          <div class="ch-stat-value" id="chTotalCount">0</div>
+          <div class="ch-stat-label">Total Challenges</div>
+        </div>
+        <div class="ch-stat">
+          <div class="ch-stat-value ch-active" id="chActiveCount">0</div>
+          <div class="ch-stat-label">Active</div>
+        </div>
+        <div class="ch-stat">
+          <div class="ch-stat-value" id="chParticipants">0</div>
+          <div class="ch-stat-label">Participants</div>
+        </div>
+        <div class="ch-stat">
+          <div class="ch-stat-value ch-reward" id="chTotalRewards">0</div>
+          <div class="ch-stat-label">Total Rewards</div>
+        </div>
+      </div>
+
+      <!-- Create/Edit Challenge Form (hidden by default) -->
+      <div class="challenge-form-panel" id="challengeFormPanel" style="display:none;">
+        <div class="challenge-form-header">
+          <h3 id="challengeFormTitle">Create New Challenge</h3>
+          <button class="form-close-btn" onclick="closeCreateChallenge()">✕</button>
+        </div>
+        <form id="challengeForm" onsubmit="submitChallenge(event)">
+          <input type="hidden" id="editChallengeId" value="">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Challenge Name</label>
+              <input type="text" id="chName" placeholder="e.g., Risk Reporter Pro" required>
+            </div>
+            <div class="form-group">
+              <label>Metric Type</label>
+              <select id="chMetric">
+                <option value="reports">Risk Reports</option>
+                <option value="safe_trips">Safe Trips</option>
+                <option value="confirms">Report Confirmations</option>
+                <option value="photo_reports">Photo Reports</option>
+                <option value="safe_km">Safe Kilometers</option>
+                <option value="peak_safe_trips">Peak Hour Safe Trips</option>
+              </select>
+            </div>
+            <div class="form-group span-full">
+              <label>Description</label>
+              <input type="text" id="chDescription" placeholder="e.g., Report 5 hazards this week in your area" required>
+            </div>
+            <div class="form-group">
+              <label>Target Count</label>
+              <input type="number" id="chTarget" min="1" max="100" value="5">
+            </div>
+            <div class="form-group">
+              <label>Reward Points</label>
+              <input type="number" id="chReward" min="10" max="1000" value="100">
+            </div>
+            <div class="form-group">
+              <label>Duration (days)</label>
+              <input type="number" id="chDuration" min="1" max="30" value="7">
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select id="chActive">
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeCreateChallenge()">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="challengeSubmitBtn">Create Challenge</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Challenge List -->
+      <div class="challenge-grid" id="challengeGrid">
+        <div class="empty-state">Loading challenges...</div>
+      </div>
+    </section>
+
     <!-- ─── Hazard Table ───────────────────────────────────────────────── -->
     <section class="table-section glass" id="tableSection">
       <div class="section-header">
