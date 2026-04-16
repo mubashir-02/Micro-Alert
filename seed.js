@@ -1,14 +1,11 @@
 require('dotenv').config();
-const mongoose = require('mongoose');
-const Risk = require('./models/Risk');
-
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/micro-alert';
+const { sequelize, Risk } = require('./models');
 
 const seedData = [
   // ── Sudden Braking Zones ─────────────────────────────────────────────────────
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.2121, 13.0123] },
+    lat: 13.0123, lng: 80.2121,
     severity: 5,
     description: 'Severe sudden braking zone at Kathipara Junction during evening rush due to converging flyover traffic from 3 directions. Vehicles descending the flyover frequently brake hard when merging.',
     timeOfDay: 'evening_rush',
@@ -19,7 +16,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.2552, 13.0628] },
+    lat: 13.0628, lng: 80.2552,
     severity: 4,
     description: 'Sudden braking near Gemini Circle at 6 PM due to merging traffic from Anna Salai and Cathedral Road. Signal changes cause chain-reaction braking.',
     timeOfDay: 'evening_rush',
@@ -30,7 +27,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.2279, 12.9012] },
+    lat: 12.9012, lng: 80.2279,
     severity: 4,
     description: 'Sudden braking near Sholinganallur signal during rains. Water logging causes vehicles to brake abruptly. Visibility reduced in heavy rain.',
     timeOfDay: 'morning_rush',
@@ -41,7 +38,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.2396, 13.0475] },
+    lat: 13.0475, lng: 80.2396,
     severity: 3,
     description: 'Sudden braking at Teynampet signal as pedestrians cross during green signal. Auto-rickshaws stop abruptly to pick passengers.',
     timeOfDay: 'afternoon',
@@ -52,7 +49,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.2707, 13.0827] },
+    lat: 13.0827, lng: 80.2707,
     severity: 4,
     description: 'Sudden braking at Chennai Central approach road. High bus and auto traffic causes erratic stopping. Especially dangerous during morning rush.',
     timeOfDay: 'morning_rush',
@@ -63,7 +60,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.2340, 13.0475] },
+    lat: 13.0475, lng: 80.2340,
     severity: 3,
     description: 'Frequent chain-braking near Panagal Park due to MTC buses stopping without warning at unmarked bus stops.',
     timeOfDay: 'evening_rush',
@@ -74,7 +71,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.2575, 13.0043] },
+    lat: 13.0043, lng: 80.2575,
     severity: 4,
     description: 'Abrupt braking on Adyar Bridge approach. Narrow lanes and merging traffic from Lattice Bridge Road cause sudden stops.',
     timeOfDay: 'evening_rush',
@@ -85,7 +82,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.2185, 13.0604] },
+    lat: 13.0604, lng: 80.2185,
     severity: 3,
     description: 'Braking zone near Vadapalani signal. Temple visitors jaywalking and heavy auto-rickshaw traffic cause abrupt stops.',
     timeOfDay: 'afternoon',
@@ -96,7 +93,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.1445, 12.9249] },
+    lat: 12.9249, lng: 80.1445,
     severity: 4,
     description: 'Sharp braking at Tambaram level crossing when railway gates close without sufficient warning. Long queues form quickly.',
     timeOfDay: 'morning_rush',
@@ -107,7 +104,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.2329, 12.9907] },
+    lat: 12.9907, lng: 80.2329,
     severity: 3,
     description: 'Sudden braking near Guindy Industrial Estate entrance due to trucks making slow turns into factory gates.',
     timeOfDay: 'morning_rush',
@@ -120,7 +117,7 @@ const seedData = [
   // ── Blind Turns ──────────────────────────────────────────────────────────────
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [80.2463, 12.8256] },
+    lat: 12.8256, lng: 80.2463,
     severity: 4,
     description: 'Dangerous blind turn on ECR near Muttukadu. Overgrown vegetation blocks line of sight. Multiple near-miss incidents reported on weekends.',
     timeOfDay: 'afternoon',
@@ -131,7 +128,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [80.2707, 13.0627] },
+    lat: 13.0627, lng: 80.2707,
     severity: 5,
     description: 'Blind turn on Mount Road near LIC building. Tall compound wall blocks visibility completely. Two-wheelers cutting across lanes at high speed.',
     timeOfDay: 'evening_rush',
@@ -142,7 +139,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [80.2647, 13.0447] },
+    lat: 13.0447, lng: 80.2647,
     severity: 4,
     description: 'Blind curve on Dr. Radhakrishnan Salai near the lighthouse. Parked cars reduce visibility. Cyclists and pedestrians appear unexpectedly around the bend.',
     timeOfDay: 'morning_rush',
@@ -153,7 +150,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [80.2497, 13.0336] },
+    lat: 13.0336, lng: 80.2497,
     severity: 3,
     description: 'Sharp blind turn at the Alwarpet Canal Bridge. Narrow road width and parked vehicles create dangerous blind spot.',
     timeOfDay: 'afternoon',
@@ -164,7 +161,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [80.2154, 13.0858] },
+    lat: 13.0858, lng: 80.2154,
     severity: 4,
     description: 'Blind turn at Anna Nagar 2nd Avenue and 18th Main Road intersection. Large banyan tree completely blocks left-turn visibility.',
     timeOfDay: 'morning_rush',
@@ -175,7 +172,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [80.1927, 13.0471] },
+    lat: 13.0471, lng: 80.1927,
     severity: 3,
     description: 'Hidden curve on Porur bypass road behind a construction barricade. Unmarked and poorly lit at night.',
     timeOfDay: 'night',
@@ -186,7 +183,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [80.2396, 13.1098] },
+    lat: 13.1098, lng: 80.2396,
     severity: 3,
     description: 'Blind entry from L&T service road merging onto Poonamallee High Road. No mirror or warning signs installed.',
     timeOfDay: 'evening_rush',
@@ -197,7 +194,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [80.2609, 12.9735] },
+    lat: 12.9735, lng: 80.2609,
     severity: 4,
     description: 'Dangerous S-curve near Thiruvanmiyur MRTS station. Vehicles exiting the parking lot are invisible to through traffic.',
     timeOfDay: 'evening_rush',
@@ -210,7 +207,7 @@ const seedData = [
   // ── Habitual Violations ──────────────────────────────────────────────────────
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [80.2628, 13.0654] },
+    lat: 13.0654, lng: 80.2628,
     severity: 3,
     description: 'Chronic jaywalking near Spencer Plaza. Pedestrians cross Anna Salai at all points ignoring the foot overbridge. Extremely dangerous during peak hours.',
     timeOfDay: 'afternoon',
@@ -221,7 +218,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [80.2775, 13.0569] },
+    lat: 13.0569, lng: 80.2775,
     severity: 4,
     description: 'Consistent wrong-way driving on Marina Beach Road one-way during early morning hours. Two-wheelers and autos frequently violate.',
     timeOfDay: 'morning_rush',
@@ -232,7 +229,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [80.2341, 13.0417] },
+    lat: 13.0417, lng: 80.2341,
     severity: 3,
     description: 'Red-light running at T. Nagar Pondy Bazaar junction. Two-wheelers routinely jump signal, especially during late evening hours.',
     timeOfDay: 'evening_rush',
@@ -243,7 +240,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [80.2224, 13.0095] },
+    lat: 13.0095, lng: 80.2224,
     severity: 4,
     description: 'Illegal U-turns at Guindy National Park entrance. Vehicles from Kathipara side make unsafe U-turns despite "No U-turn" sign.',
     timeOfDay: 'afternoon',
@@ -254,7 +251,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [80.2089, 13.0743] },
+    lat: 13.0743, lng: 80.2089,
     severity: 2,
     description: 'Habitual triple-riding on two-wheelers near Koyambedu Bus Terminus. Families with children riding without helmets.',
     timeOfDay: 'afternoon',
@@ -265,7 +262,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [80.2489, 13.0601] },
+    lat: 13.0601, lng: 80.2489,
     severity: 3,
     description: 'Persistent footpath parking on Nungambakkam High Road forces pedestrians to walk on the main road into traffic.',
     timeOfDay: 'afternoon',
@@ -276,7 +273,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [80.2573, 13.0868] },
+    lat: 13.0868, lng: 80.2573,
     severity: 4,
     description: 'Dangerous overloaded share-autos near Flower Bazaar. Vehicles carry 12+ passengers and drive erratically through congested streets.',
     timeOfDay: 'morning_rush',
@@ -287,7 +284,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [80.2204, 12.9485] },
+    lat: 12.9485, lng: 80.2204,
     severity: 3,
     description: 'Chronic wrong-side driving on Velachery Main Road near Phoenix Mall. Two-wheelers use opposite lane to avoid traffic.',
     timeOfDay: 'evening_rush',
@@ -298,7 +295,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [80.2428, 13.0734] },
+    lat: 13.0734, lng: 80.2428,
     severity: 3,
     description: 'Bus lane violations on Anna Salai near Egmore. Cars and autos use dedicated bus lane, causing MTC buses to brake suddenly.',
     timeOfDay: 'morning_rush',
@@ -309,7 +306,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.2504, 13.0472] },
+    lat: 13.0472, lng: 80.2504,
     severity: 3,
     description: 'Sudden braking at Thousand Lights intersection due to auto-rickshaws cutting across from the mosque side.',
     timeOfDay: 'evening_rush',
@@ -320,7 +317,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [80.2270, 12.8690] },
+    lat: 12.8690, lng: 80.2270,
     severity: 3,
     description: 'Obscured turn on Kelambakkam Road. Construction debris narrows the road and blocks view around the bend.',
     timeOfDay: 'night',
@@ -331,7 +328,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [80.2093, 13.0476] },
+    lat: 13.0476, lng: 80.2093,
     severity: 4,
     description: 'Speed limit violations on inner ring road near Ashok Nagar. Vehicles routinely exceed 80 km/h in a 40 km/h zone.',
     timeOfDay: 'night',
@@ -341,10 +338,10 @@ const seedData = [
     verified: true
   },
 
-  // ── Accident-Prone Hotspots (realistic demo data) ───────────────────────────
+  // ── Accident-Prone Hotspots ─────────────────────────────────────────────────
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2121, 13.0110] },
+    lat: 13.0110, lng: 80.2121,
     severity: 5,
     description: 'High-severity crash-risk zone: Kathipara to GST Road stretch. Flyover exit speed combined with heavy merges can cause rear-end and side-impact crashes, especially during peak hours.',
     timeOfDay: 'evening_rush',
@@ -355,7 +352,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.1642, 13.0860] },
+    lat: 13.0860, lng: 80.1642,
     severity: 5,
     description: 'Crash-risk hotspot at Maduravoyal interchange. High-speed bypass traffic merging with slower local traffic creates frequent conflict points, especially at night.',
     timeOfDay: 'night',
@@ -366,7 +363,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2089, 13.0720] },
+    lat: 13.0720, lng: 80.2089,
     severity: 4,
     description: 'Accident-prone zone at Koyambedu flyover exit. Buses and heavy vehicles descending the flyover at speed cause frequent collisions with slower local traffic.',
     timeOfDay: 'morning_rush',
@@ -377,7 +374,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2758, 13.0613] },
+    lat: 13.0613, lng: 80.2758,
     severity: 4,
     description: 'Pedestrian conflict zone near Anna Arch/War Memorial. Visitors and joggers cross outside designated crossings, increasing sudden-braking and collision risk.',
     timeOfDay: 'morning_rush',
@@ -388,7 +385,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2784, 13.0878] },
+    lat: 13.0878, lng: 80.2784,
     severity: 4,
     description: 'High-risk crash zone at Napier Bridge approach. Vehicles accelerate on the wide stretch and lose control at the bridge curve, especially during rain.',
     timeOfDay: 'evening_rush',
@@ -399,7 +396,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2160, 12.9860] },
+    lat: 12.9860, lng: 80.2160,
     severity: 5,
     description: 'Crash-risk corridor near Nanganallur on Inner Ring Road. Higher speeds combined with low visibility at night increase rear-end and loss-of-control risk.',
     timeOfDay: 'night',
@@ -410,7 +407,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2100, 12.9780] },
+    lat: 12.9780, lng: 80.2100,
     severity: 4,
     description: 'Multiple rear-end collision zone on Inner Ring Road near Adambakkam. Unlit median openings cause head-on crashes with vehicles making illegal U-turns.',
     timeOfDay: 'night',
@@ -421,7 +418,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2204, 12.9400] },
+    lat: 12.9400, lng: 80.2204,
     severity: 5,
     description: 'Velachery Bypass crash-risk hotspot. High-speed trucks and buses meet unprotected intersections and two-wheelers weaving through traffic.',
     timeOfDay: 'evening_rush',
@@ -432,7 +429,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.1720, 12.9420] },
+    lat: 12.9420, lng: 80.1720,
     severity: 4,
     description: 'Velachery-Tambaram (SH48) accident zone. Frequent side-impact crashes at uncontrolled intersections. Heavy mix of local and highway traffic.',
     timeOfDay: 'morning_rush',
@@ -443,7 +440,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.1880, 12.9600] },
+    lat: 12.9600, lng: 80.1880,
     severity: 4,
     description: 'Pallavaram-Thoraipakkam Road (SH109) crash hotspot. Construction zones narrow lanes unpredictably, causing sideswipe crashes and rear-end collisions.',
     timeOfDay: 'afternoon',
@@ -454,7 +451,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.3030, 13.1290] },
+    lat: 13.1290, lng: 80.3030,
     severity: 4,
     description: 'Chennai-Ennore Expressway fatal stretch. High-speed lorries and tankers cause catastrophic crashes. Poor lighting and no emergency shoulders.',
     timeOfDay: 'night',
@@ -465,7 +462,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2420, 12.9870] },
+    lat: 12.9870, lng: 80.2420,
     severity: 3,
     description: 'Taramani Link Road crash-risk zone. Unsafe median openings and heavy IT corridor traffic create frequent T-bone conflict points.',
     timeOfDay: 'evening_rush',
@@ -476,7 +473,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2670, 13.0800] },
+    lat: 13.0800, lng: 80.2670,
     severity: 4,
     description: 'Chennai Central Metro station pedestrian conflict zone. Commuters rushing to catch trains cross the road unpredictably near station exits and bus stops.',
     timeOfDay: 'morning_rush',
@@ -487,7 +484,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2815, 13.0880] },
+    lat: 13.0880, lng: 80.2815,
     severity: 3,
     description: 'Broadway Bus Terminus area — high pedestrian-vehicle conflict zone. Overcrowded bus stops push pedestrians into traffic lanes. Multiple minor injuries monthly.',
     timeOfDay: 'afternoon',
@@ -498,7 +495,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2460, 13.0670] },
+    lat: 13.0670, lng: 80.2460,
     severity: 3,
     description: 'Nehru Park Metro Station area. Two-wheeler riders weaving through heavy traffic near metro construction barriers cause frequent collisions.',
     timeOfDay: 'evening_rush',
@@ -509,7 +506,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2279, 12.8950] },
+    lat: 12.8950, lng: 80.2279,
     severity: 5,
     description: 'OMR Sholinganallur IT corridor crash-risk stretch. High-speed traffic, waterlogging during rains, and poor street lighting increase severe collision likelihood.',
     timeOfDay: 'night',
@@ -520,7 +517,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2350, 12.8500] },
+    lat: 12.8500, lng: 80.2350,
     severity: 4,
     description: 'OMR Kelambakkam stretch — frequent head-on collisions due to illegal median cuts and high truck traffic from Chengalpet.',
     timeOfDay: 'night',
@@ -531,7 +528,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2500, 13.0500] },
+    lat: 13.0500, lng: 80.2500,
     severity: 4,
     description: 'Thousand Lights flyover exit crash-risk zone. Vehicles descend at high speed and encounter slow traffic near the Anna Salai signal.',
     timeOfDay: 'evening_rush',
@@ -542,7 +539,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2620, 13.0370] },
+    lat: 13.0370, lng: 80.2620,
     severity: 3,
     description: 'Mylapore tank area — frequent two-wheeler skid accidents on wet roads during monsoon. Temple traffic adds to congestion and collision risk.',
     timeOfDay: 'afternoon',
@@ -553,7 +550,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.1462, 12.9516] },
+    lat: 12.9516, lng: 80.1462,
     severity: 4,
     description: 'Chromepet railway crossing crash-risk zone. Vehicles sometimes attempt to cross late as gates begin closing, creating severe conflict.',
     timeOfDay: 'morning_rush',
@@ -564,7 +561,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.1491, 12.9675] },
+    lat: 12.9675, lng: 80.1491,
     severity: 4,
     description: 'Pallavaram flyover descent crash zone. Steep gradient causes heavy vehicles to lose braking control. Multiple truck-car collisions reported.',
     timeOfDay: 'afternoon',
@@ -575,7 +572,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2300, 13.1100] },
+    lat: 13.1100, lng: 80.2300,
     severity: 4,
     description: 'Perambur corridor crash-risk zone. Narrow roads with high bus frequency and limited pedestrian space create frequent near-misses and collisions.',
     timeOfDay: 'evening_rush',
@@ -586,7 +583,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2530, 13.0530] },
+    lat: 13.0530, lng: 80.2530,
     severity: 3,
     description: 'Royapettah High Road crash zone near hospital. Ambulances and patient vehicles making sudden turns cause chain-reaction accidents.',
     timeOfDay: 'afternoon',
@@ -597,7 +594,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2420, 13.0840] },
+    lat: 13.0840, lng: 80.2420,
     severity: 3,
     description: 'Kilpauk Garden Road junction — signal timing and turning conflicts increase T-bone risk, especially during peak hours.',
     timeOfDay: 'morning_rush',
@@ -608,7 +605,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2640, 12.9835] },
+    lat: 12.9835, lng: 80.2640,
     severity: 4,
     description: 'Thiruvanmiyur ECR junction crash-risk zone. High-speed ECR traffic meets dense local traffic with complex turning movements.',
     timeOfDay: 'night',
@@ -621,7 +618,7 @@ const seedData = [
   // ── Tiruvallur Region ───────────────────────────────────────────────────────
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [79.9064, 13.1435] },
+    lat: 13.1435, lng: 79.9064,
     severity: 3,
     description: 'Sudden braking at Tiruvallur Bus Stand entrance. MTC and private buses stop abruptly without pulling into the bay. Congested approach causes chain braking.',
     timeOfDay: 'morning_rush',
@@ -632,7 +629,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [79.9120, 13.1510] },
+    lat: 13.1510, lng: 79.9120,
     severity: 3,
     description: 'Blind curve near Tiruvallur Railway Station underpass. Low clearance and poor lighting make oncoming vehicles invisible until the last moment.',
     timeOfDay: 'night',
@@ -643,7 +640,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [79.9180, 13.1380] },
+    lat: 13.1380, lng: 79.9180,
     severity: 2,
     description: 'Wrong-side driving on Tiruvallur-Poonamallee Road shoulder. Two-wheelers and autos use the wrong side to avoid traffic near the temple zone.',
     timeOfDay: 'afternoon',
@@ -656,7 +653,7 @@ const seedData = [
   // ── Avadi Region ────────────────────────────────────────────────────────────
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.1010, 13.1146] },
+    lat: 13.1146, lng: 80.1010,
     severity: 4,
     description: 'Avadi–Poonamallee corridor crash-risk hotspot. Heavy industrial vehicles mixing with two-wheelers increases rear-end and sideswipe risk at peak times.',
     timeOfDay: 'morning_rush',
@@ -667,7 +664,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.1025, 13.1210] },
+    lat: 13.1210, lng: 80.1025,
     severity: 4,
     description: 'Sudden braking near Avadi Bus Depot. Buses exiting the depot cut across traffic lanes without signalling, causing rear-end collisions.',
     timeOfDay: 'evening_rush',
@@ -678,7 +675,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [80.0950, 13.1080] },
+    lat: 13.1080, lng: 80.0950,
     severity: 3,
     description: 'Red-light jumping at Avadi Toll Gate junction. Vehicles from all directions routinely ignore the signal, especially during non-peak hours.',
     timeOfDay: 'night',
@@ -691,7 +688,7 @@ const seedData = [
   // ── Arakkonam Region ────────────────────────────────────────────────────────
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [79.6700, 13.0830] },
+    lat: 13.0830, lng: 79.6700,
     severity: 4,
     description: 'Arakkonam–Kanchipuram Road crash-risk stretch. Narrow undivided road with heavy truck traffic and risky overtakes increases severe collision likelihood.',
     timeOfDay: 'night',
@@ -702,7 +699,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [79.6630, 13.0760] },
+    lat: 13.0760, lng: 79.6630,
     severity: 3,
     description: 'Blind curve near Arakkonam Air Force Station approach road. High walls on both sides block all visibility. No convex mirror installed.',
     timeOfDay: 'afternoon',
@@ -715,7 +712,7 @@ const seedData = [
   // ── Sriperumbudur Region ────────────────────────────────────────────────────
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [79.9410, 12.9710] },
+    lat: 12.9710, lng: 79.9410,
     severity: 5,
     description: 'Sriperumbudur Highway crash-risk stretch. High-speed highway traffic meets unmarked speed breakers and factory entrances, increasing sudden-braking and rear-end risk.',
     timeOfDay: 'night',
@@ -726,7 +723,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [79.9480, 12.9650] },
+    lat: 12.9650, lng: 79.9480,
     severity: 4,
     description: 'Sudden braking at Sriperumbudur SIPCOT gate. Industrial trucks make abrupt turns into factory entrances without warning. Frequent rear-end crashes.',
     timeOfDay: 'morning_rush',
@@ -737,7 +734,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [79.9350, 12.9780] },
+    lat: 12.9780, lng: 79.9350,
     severity: 3,
     description: 'Illegal U-turns on NH4 near Sriperumbudur temple. Pilgrims and local traffic make dangerous U-turns across the highway median.',
     timeOfDay: 'afternoon',
@@ -750,7 +747,7 @@ const seedData = [
   // ── Kanchipuram Region ──────────────────────────────────────────────────────
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [79.7036, 12.8342] },
+    lat: 12.8342, lng: 79.7036,
     severity: 5,
     description: 'Kanchipuram–Chennai road crash-risk hotspot. Tourist buses and cargo vehicles mix with local traffic, with sudden stops near junctions and markets.',
     timeOfDay: 'evening_rush',
@@ -761,7 +758,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [79.7100, 12.8410] },
+    lat: 12.8410, lng: 79.7100,
     severity: 3,
     description: 'Chronic jaywalking near Kanchipuram Kamakshi Temple. Pilgrims cross the busy main road from all directions, ignoring pedestrian crossings.',
     timeOfDay: 'afternoon',
@@ -772,7 +769,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [79.6980, 12.8280] },
+    lat: 12.8280, lng: 79.6980,
     severity: 4,
     description: 'Dangerous blind turn near Kanchipuram Silk Market area. Narrow streets with parked silk cargo vehicles obstruct visibility around corners.',
     timeOfDay: 'morning_rush',
@@ -785,7 +782,7 @@ const seedData = [
   // ── Kundrathur Region ───────────────────────────────────────────────────────
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.0990, 12.9990] },
+    lat: 12.9990, lng: 80.0990,
     severity: 3,
     description: 'Sudden braking near Kundrathur Junction. Auto-rickshaws and share vans stop unpredictably to pick up passengers along GST Road.',
     timeOfDay: 'morning_rush',
@@ -796,7 +793,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.1050, 13.0070] },
+    lat: 13.0070, lng: 80.1050,
     severity: 4,
     description: 'Kundrathur–Porur Road crash-risk zone. Narrow two-lane road with heavy lorry traffic and risky overtakes increases head-on collision risk.',
     timeOfDay: 'afternoon',
@@ -809,7 +806,7 @@ const seedData = [
   // ── Thakkolam Region ────────────────────────────────────────────────────────
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [79.7250, 13.0590] },
+    lat: 13.0590, lng: 79.7250,
     severity: 3,
     description: 'Thakkolam Railway Crossing accident-prone zone. No barricade warning system. Vehicles attempt to cross during approaching trains.',
     timeOfDay: 'morning_rush',
@@ -820,7 +817,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [79.7320, 13.0540] },
+    lat: 13.0540, lng: 79.7320,
     severity: 2,
     description: 'No-helmet riding endemic on Thakkolam inner roads. Two-wheeler riders routinely flout helmet rules in the semi-rural stretch.',
     timeOfDay: 'afternoon',
@@ -833,7 +830,7 @@ const seedData = [
   // ── Wallajahbad / Walajabad Region ──────────────────────────────────────────
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [79.7180, 12.7870] },
+    lat: 12.7870, lng: 79.7180,
     severity: 4,
     description: 'Walajabad Highway junction crash zone. NH-level traffic speed on a single-lane road. Head-on collisions frequent during overtaking maneuvers.',
     timeOfDay: 'night',
@@ -846,7 +843,7 @@ const seedData = [
   // ── Vandalur Region ─────────────────────────────────────────────────────────
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.0810, 12.8880] },
+    lat: 12.8880, lng: 80.0810,
     severity: 3,
     description: 'Sudden braking near Vandalur Zoo entrance. Tourist vehicles and school buses make abrupt stops to drop passengers on the highway.',
     timeOfDay: 'afternoon',
@@ -857,7 +854,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.0850, 12.8750] },
+    lat: 12.8750, lng: 80.0850,
     severity: 4,
     description: 'Vandalur–Kelambakkam Road crash-risk hotspot. Two-lane road with limited lighting and heavy truck traffic increases head-on and sideswipe risk at night.',
     timeOfDay: 'night',
@@ -870,7 +867,7 @@ const seedData = [
   // ── Poonamallee Region ──────────────────────────────────────────────────────
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.1030, 13.0470] },
+    lat: 13.0470, lng: 80.1030,
     severity: 4,
     description: 'Poonamallee Bypass junction crash-risk zone. Vehicles exiting the bypass at speed encounter slower local traffic and frequent lane changes.',
     timeOfDay: 'evening_rush',
@@ -881,7 +878,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.1120, 13.0420] },
+    lat: 13.0420, lng: 80.1120,
     severity: 3,
     description: 'Hard braking near Poonamallee Military compound. Army vehicle convoys enter/exit causing civilian traffic to brake suddenly on the narrow road.',
     timeOfDay: 'morning_rush',
@@ -891,10 +888,10 @@ const seedData = [
     verified: true
   },
 
-  // ── South & Coastal Chennai (denser micro-risks for your map region) ─────────
+  // ── South & Coastal Chennai ──────────────────────────────────────────────────
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.2599, 12.9958] },
+    lat: 12.9958, lng: 80.2599,
     severity: 4,
     description: 'Frequent hard braking on LB Road due to buses pulling out abruptly and pedestrians crossing between vehicles.',
     timeOfDay: 'evening_rush',
@@ -905,7 +902,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [80.2558, 12.9898] },
+    lat: 12.9898, lng: 80.2558,
     severity: 3,
     description: 'Wrong-side riding on service lanes to bypass congestion; two-wheelers commonly cut against traffic near the signal.',
     timeOfDay: 'evening_rush',
@@ -916,7 +913,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [80.2703, 12.9726] },
+    lat: 12.9726, lng: 80.2703,
     severity: 3,
     description: 'Blind left-turn into a narrow lane with parked cars blocking visibility; two-wheelers appear suddenly around the corner.',
     timeOfDay: 'night',
@@ -927,7 +924,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.2696, 12.9556] },
+    lat: 12.9556, lng: 80.2696,
     severity: 3,
     description: 'Sudden braking near beach access as cars slow unexpectedly to park; pedestrians cross without looking.',
     timeOfDay: 'afternoon',
@@ -938,7 +935,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [80.2709, 12.9358] },
+    lat: 12.9358, lng: 80.2709,
     severity: 4,
     description: 'Hidden curve with roadside stalls narrowing the lane; oncoming traffic becomes visible late, especially at dusk.',
     timeOfDay: 'evening_rush',
@@ -949,7 +946,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [80.2688, 12.9256] },
+    lat: 12.9256, lng: 80.2688,
     severity: 3,
     description: 'Persistent illegal U-turns at a median opening; vehicles stop suddenly in the fast lane to turn.',
     timeOfDay: 'evening_rush',
@@ -960,7 +957,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.2652, 12.9108] },
+    lat: 12.9108, lng: 80.2652,
     severity: 4,
     description: 'Hard braking in a school zone where autos stop abruptly to pick up students; congestion peaks on weekdays.',
     timeOfDay: 'afternoon',
@@ -971,7 +968,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2638, 12.8988] },
+    lat: 12.8988, lng: 80.2638,
     severity: 4,
     description: 'Crash-risk point near a junction: fast through-traffic meets turning vehicles and buses changing lanes late.',
     timeOfDay: 'evening_rush',
@@ -982,7 +979,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [80.2562, 12.9153] },
+    lat: 12.9153, lng: 80.2562,
     severity: 3,
     description: 'Blind merge from a side street onto ECR with limited line of sight; braking distance worsens during rain.',
     timeOfDay: 'night',
@@ -993,7 +990,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [80.2521, 12.9047] },
+    lat: 12.9047, lng: 80.2521,
     severity: 2,
     description: 'High-speed weaving by two-wheelers on the ECR stretch; risky overtakes and shoulder riding are common at night.',
     timeOfDay: 'night',
@@ -1003,10 +1000,10 @@ const seedData = [
     verified: false
   },
 
-  // OMR corridor (Perungudi → Navalur → Siruseri)
+  // ── OMR corridor (Perungudi → Navalur → Siruseri) ───────────────────────────
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.2436, 12.9723] },
+    lat: 12.9723, lng: 80.2436,
     severity: 4,
     description: 'Abrupt braking near IT corridor merge as cars cut across lanes to take the service road exit.',
     timeOfDay: 'evening_rush',
@@ -1017,7 +1014,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [80.2449, 12.9599] },
+    lat: 12.9599, lng: 80.2449,
     severity: 3,
     description: 'Two-wheelers routinely ride against flow on the service lane to bypass signal queues.',
     timeOfDay: 'morning_rush',
@@ -1028,7 +1025,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [80.2465, 12.9466] },
+    lat: 12.9466, lng: 80.2465,
     severity: 3,
     description: 'Blind entry from a parking/service lane onto main road; cars accelerate into traffic with minimal gap checks.',
     timeOfDay: 'afternoon',
@@ -1039,7 +1036,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.2277, 12.9186] },
+    lat: 12.9186, lng: 80.2277,
     severity: 4,
     description: 'Crash-risk junction with heavy turning movements and late lane changes around a large signal.',
     timeOfDay: 'evening_rush',
@@ -1050,7 +1047,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.2077, 12.9090] },
+    lat: 12.9090, lng: 80.2077,
     severity: 3,
     description: 'Stop-and-go braking near Navalur as vehicles slow suddenly for speed breakers and unmarked crossings.',
     timeOfDay: 'evening_rush',
@@ -1061,7 +1058,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [80.2012, 12.8605] },
+    lat: 12.8605, lng: 80.2012,
     severity: 4,
     description: 'Poorly lit curve near Siruseri where vehicles enter/exit campuses; visibility drops sharply during rain.',
     timeOfDay: 'night',
@@ -1071,10 +1068,10 @@ const seedData = [
     verified: false
   },
 
-  // Tambaram / Chromepet / Pallavaram belt (dense region in your screenshot)
+  // ── Tambaram / Chromepet / Pallavaram belt ──────────────────────────────────
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.1372, 12.9345] },
+    lat: 12.9345, lng: 80.1372,
     severity: 4,
     description: 'Frequent sudden braking near bus stop and shopfronts; vehicles stop abruptly and two-wheelers cut in.',
     timeOfDay: 'evening_rush',
@@ -1085,7 +1082,7 @@ const seedData = [
   },
   {
     type: 'habitual_violation',
-    location: { type: 'Point', coordinates: [80.1508, 12.9692] },
+    lat: 12.9692, lng: 80.1508,
     severity: 3,
     description: 'Lane-cutting and signal violations at a busy junction; two-wheelers squeeze through at the signal change.',
     timeOfDay: 'morning_rush',
@@ -1096,7 +1093,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [80.1439, 12.9228] },
+    lat: 12.9228, lng: 80.1439,
     severity: 3,
     description: 'Blind entry/exit near the railway station approach road; parked autos obscure visibility and force sudden stops.',
     timeOfDay: 'night',
@@ -1107,7 +1104,7 @@ const seedData = [
   },
   {
     type: 'accident',
-    location: { type: 'Point', coordinates: [80.1217, 12.9631] },
+    lat: 12.9631, lng: 80.1217,
     severity: 4,
     description: 'Crash-risk point where fast-moving traffic meets local turning vehicles and pedestrians at an unprotected crossing.',
     timeOfDay: 'evening_rush',
@@ -1118,7 +1115,7 @@ const seedData = [
   },
   {
     type: 'sudden_brake',
-    location: { type: 'Point', coordinates: [80.1155, 12.9005] },
+    lat: 12.9005, lng: 80.1155,
     severity: 3,
     description: 'Abrupt braking near a curve and speed breakers; buses and vans stop suddenly to pick passengers.',
     timeOfDay: 'afternoon',
@@ -1129,7 +1126,7 @@ const seedData = [
   },
   {
     type: 'blind_turn',
-    location: { type: 'Point', coordinates: [80.1036, 12.8859] },
+    lat: 12.8859, lng: 80.1036,
     severity: 4,
     description: 'Blind curve on Vandalur–Kelambakkam road with minimal lighting; heavy vehicles occupy full lane at night.',
     timeOfDay: 'night',
@@ -1142,20 +1139,22 @@ const seedData = [
 
 async function seed() {
   try {
-    await mongoose.connect(MONGODB_URI);
-    console.log('✅ Connected to MongoDB');
+    await sequelize.authenticate();
+    console.log('✅ Connected to MySQL');
 
-    await Risk.deleteMany({});
+    // Sync the Risk table (creates if not exists)
+    await Risk.sync({ force: false });
+    console.log('📋 Risk table ready');
+
+    // Clear existing risks
+    await Risk.destroy({ where: {}, truncate: true });
     console.log('🗑️  Cleared existing risks');
 
-    const inserted = await Risk.insertMany(seedData);
+    // Bulk insert all seed data
+    const inserted = await Risk.bulkCreate(seedData);
     console.log(`🌱 Seeded ${inserted.length} micro-risk events across Chennai`);
 
-    // Ensure geospatial index
-    await Risk.collection.createIndex({ location: '2dsphere' });
-    console.log('📍 Geospatial index created');
-
-    await mongoose.disconnect();
+    await sequelize.close();
     console.log('✅ Done. Run "npm start" to launch the app.');
     process.exit(0);
   } catch (err) {

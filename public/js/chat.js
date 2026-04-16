@@ -1,6 +1,129 @@
 // ─── Micro-Alert Chat / LLM Controller ──────────────────────────────────────────
 // Handles all LLM API interactions: explain risk, ask about area, condensed alert
 
+let askAreaLocationMarker = null;
+let askAreaAccuracyCircle = null;
+let askAreaRisksLayer = null;
+let aiLocationMarkers = []; // Temporary markers for AI-mentioned locations
+
+// ─── Plot AI-mentioned locations on the map ─────────────────────────────────────
+async function plotAILocations(mentionedLocations, riskLocations) {
+  // Clear previous AI location markers
+  clearAILocationMarkers();
+
+  if ((!mentionedLocations || mentionedLocations.length === 0) && (!riskLocations || riskLocations.length === 0)) return;
+
+  const plotted = new Set();  // Track already plotted names to avoid duplicates
+  const allLatLngs = [];
+
+  // 1. First try to match mentioned locations against the LANDMARKS dictionary and risk data
+  for (const loc of (mentionedLocations || [])) {
+    const name = loc.name;
+    if (!name || plotted.has(name.toLowerCase())) continue;
+
+    let coords = null;
+
+    // Check LANDMARKS dictionary (from map.js)
+    if (typeof LANDMARKS !== 'undefined') {
+      const key = name.toLowerCase().trim();
+      for (const [k, v] of Object.entries(LANDMARKS)) {
+        if (v && (k.includes(key) || key.includes(k) || key.includes(k.split(' ')[0]))) {
+          coords = v;
+          break;
+        }
+      }
+    }
+
+    // Check against risk data coordinates
+    if (!coords && riskLocations) {
+      for (const rl of riskLocations) {
+        const rlName = (rl.name || '').toLowerCase();
+        const rlLandmark = (rl.landmark || '').toLowerCase();
+        const searchName = name.toLowerCase();
+        if (rlName.includes(searchName) || searchName.includes(rlName) ||
+            rlLandmark.includes(searchName) || searchName.includes(rlLandmark)) {
+          coords = [rl.lat, rl.lng];
+          break;
+        }
+      }
+    }
+
+    // Geocode via Nominatim as last resort
+    if (!coords) {
+      try {
+        const query = name.includes('Chennai') ? name : `${name}, Chennai, India`;
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`, { headers: { 'Accept-Language': 'en' } });
+        const data = await res.json();
+        if (data && data.length > 0) {
+          coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+        }
+      } catch (e) { /* silent */ }
+    }
+
+    if (coords) {
+      addAILocationMarker(coords, name);
+      allLatLngs.push(coords);
+      plotted.add(name.toLowerCase());
+    }
+  }
+
+  // 2. Also plot risk locations that have coordinates directly
+  for (const rl of (riskLocations || [])) {
+    const name = rl.name || rl.landmark || '';
+    if (!name || plotted.has(name.toLowerCase())) continue;
+    if (rl.lat && rl.lng) {
+      addAILocationMarker([rl.lat, rl.lng], name, rl.severity);
+      allLatLngs.push([rl.lat, rl.lng]);
+      plotted.add(name.toLowerCase());
+    }
+  }
+
+  // Fit map to show all AI markers if we have some
+  if (allLatLngs.length > 0 && typeof map !== 'undefined' && map) {
+    try {
+      map.fitBounds(allLatLngs, { padding: [60, 60], maxZoom: 14 });
+    } catch (e) { /* silent */ }
+  }
+}
+
+function addAILocationMarker(coords, name, severity) {
+  if (typeof L === 'undefined' || !map) return;
+
+  const sevColor = severity >= 4 ? '#ef4444' : severity === 3 ? '#f97316' : '#06b6d4';
+
+  const marker = L.marker(coords, {
+    icon: L.divIcon({
+      html: `<div class="ai-location-marker">
+               <div class="ai-loc-pulse"></div>
+               <div class="ai-loc-dot" style="background:${sevColor};box-shadow:0 0 12px ${sevColor}"></div>
+               <div class="ai-loc-label">${name}</div>
+             </div>`,
+      className: '',
+      iconSize: [120, 50],
+      iconAnchor: [60, 25]
+    }),
+    zIndexOffset: 800
+  }).addTo(map);
+
+  marker.bindPopup(
+    `<div class="popup-inner">
+      <span class="popup-type" style="background:rgba(6,182,212,0.15);color:#06b6d4;">📍 AI MENTION</span>
+      <h3>${name}</h3>
+      <p class="popup-desc" style="font-size:11px;color:var(--text-secondary);">This location was identified in the AI risk analysis for the current area.</p>
+    </div>`,
+    { maxWidth: 260, className: 'risk-popup' }
+  );
+
+  aiLocationMarkers.push(marker);
+}
+
+function clearAILocationMarkers() {
+  aiLocationMarkers.forEach(m => {
+    try { map.removeLayer(m); } catch (e) {}
+  });
+  aiLocationMarkers = [];
+}
+
 // ─── Explain a specific risk ────────────────────────────────────────────────────
 async function explainRisk(riskId) {
   const resultEl = document.getElementById(`explain-${riskId}`);
@@ -46,7 +169,18 @@ async function explainRisk(riskId) {
 }
 
 // ─── Ask About Current Area ─────────────────────────────────────────────────────
-async function askAboutArea() {
+function getCurrentBrowserLocation(options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }) {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject(new Error('Geolocation not supported'));
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+      (err) => reject(err),
+      options
+    );
+  });
+}
+
+async function askAboutArea(useCurrentLocation = false) {
   const loading = document.getElementById('askLoading');
   const resultBox = document.getElementById('askResult');
   const resultText = document.getElementById('askResultText');
@@ -57,69 +191,140 @@ async function askAboutArea() {
   resultBox.classList.remove('visible');
   btn.disabled = true;
 
-  try {
-    // Get user's actual location via browser geolocation
-    const userLocation = await getUserLocation();
-
-    // Place the pulsing blue location marker
-    if (userLocationMarker) map.removeLayer(userLocationMarker);
-    if (userAccuracyCircle) map.removeLayer(userAccuracyCircle);
-
-    userAccuracyCircle = L.circle([userLocation.lat, userLocation.lng], {
-      radius: userLocation.accuracy,
-      color: '#3b82f6',
-      fillColor: '#3b82f6',
-      fillOpacity: 0.08,
-      weight: 1,
-      opacity: 0.3
-    }).addTo(map);
-
-    userLocationMarker = L.marker([userLocation.lat, userLocation.lng], {
-      icon: L.divIcon({
-        html: `<div class="my-location-dot">
-                 <div class="my-location-pulse"></div>
-                 <div class="my-location-core"></div>
-               </div>`,
-        className: '',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
-      }),
-      zIndexOffset: 1000
-    }).addTo(map);
-
-    userLocationMarker.bindPopup(
-      `<div class="popup-inner">
-         <h3>📍 You are here</h3>
-         <p class="popup-desc" style="margin-bottom:4px;">Lat: ${userLocation.lat.toFixed(6)}, Lng: ${userLocation.lng.toFixed(6)}</p>
-         <p class="popup-desc">Accuracy: ~${Math.round(userLocation.accuracy)}m</p>
-       </div>`
-    );
-
-    // Fly the map to the user's location
-    map.flyTo([userLocation.lat, userLocation.lng], 15, { duration: 1.5 });
-
-    // Reverse geocode to get a friendly area name
-    let areaName = 'your current area';
+  let center = map.getCenter();
+  if (useCurrentLocation) {
     try {
-      const name = await reverseGeocode(userLocation.lat, userLocation.lng);
-      if (name) areaName = name;
-    } catch (e) { /* use default */ }
+      const loc = await getCurrentBrowserLocation();
+      center = { lat: loc.lat, lng: loc.lng };
+      if (typeof map?.flyTo === 'function') map.flyTo([loc.lat, loc.lng], 16, { duration: 1 });
 
-    showToast(`📍 Analyzing risks near ${areaName}…`, 'success');
+      // Drop/update a "you are here" marker for this analysis.
+      if (typeof L !== 'undefined' && map && typeof map.addLayer === 'function') {
+        try {
+          if (askAreaLocationMarker) map.removeLayer(askAreaLocationMarker);
+          if (askAreaAccuracyCircle) map.removeLayer(askAreaAccuracyCircle);
 
-    // Wait a moment for map to settle
-    await new Promise(resolve => setTimeout(resolve, 800));
+          const accuracy = Number.isFinite(loc.accuracy) ? loc.accuracy : 60;
+          askAreaAccuracyCircle = L.circle([loc.lat, loc.lng], {
+            radius: accuracy,
+            color: '#2563EB',
+            fillColor: '#2563EB',
+            fillOpacity: 0.08,
+            weight: 1,
+            opacity: 0.3
+          }).addTo(map);
 
-    // Fetch nearby risks from the user's actual location
-    const nearbyRes = await fetch(`/api/risks/nearby?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=3000`);
+          askAreaLocationMarker = L.marker([loc.lat, loc.lng], {
+            icon: L.divIcon({
+              html: `<div class="my-location-dot"><div class="my-location-pulse"></div><div class="my-location-core"></div></div>`,
+              className: '',
+              iconSize: [24, 24],
+              iconAnchor: [12, 12]
+            }),
+            zIndexOffset: 1000
+          }).addTo(map);
+        } catch (e) {
+          // ignore marker rendering errors
+        }
+      }
+    } catch (e) {
+      // If user denies GPS or it fails, fall back to current map center.
+    }
+  }
+
+  const bounds = map.getBounds();
+  // Calculate rough radius from bounds
+  const ne = bounds.getNorthEast();
+  const dLat = ne.lat - center.lat;
+  const dLng = ne.lng - center.lng;
+  const radius = Math.max(
+    Math.sqrt(dLat * dLat + dLng * dLng) * 111000, // Convert to meters roughly
+    500
+  );
+
+  try {
+    // Fetch nearby risks
+    const nearbyRes = await fetch(`/api/risks/nearby?lat=${center.lat}&lng=${center.lng}&radius=${Math.min(radius, 5000)}`);
     const nearbyJson = await nearbyRes.json();
 
     if (!nearbyJson.success || !nearbyJson.data.features || nearbyJson.data.features.length === 0) {
-      resultText.textContent = `No risk data available near ${areaName}. You're in a low-risk zone — stay alert and drive safely!`;
+      resultText.textContent = 'No risk data available for the current view area. Try zooming into a specific Chennai neighbourhood.';
       resultBox.classList.add('visible');
       loading.classList.remove('visible');
       btn.disabled = false;
       return;
+    }
+
+    // Plot nearby risks on map (temporary overlay for this analysis)
+    if (typeof L !== 'undefined' && map) {
+      if (!askAreaRisksLayer) askAreaRisksLayer = L.layerGroup().addTo(map);
+      askAreaRisksLayer.clearLayers();
+
+      const latLngs = [];
+      let addedLayers = 0;
+      let skippedFeatures = 0;
+      for (const f of nearbyJson.data.features) {
+        try {
+          const props = f.properties || {};
+          const coords = f.geometry?.coordinates;
+          if (!coords || coords.length < 2) { skippedFeatures++; continue; }
+          const [lng, lat] = coords;
+          latLngs.push([lat, lng]);
+
+          const risk = {
+            _id: props._id,
+            id: props._id,
+            type: props.type,
+            severity: props.severity,
+            description: props.description,
+            roadName: props.roadName,
+            landmark: props.landmark,
+            timeOfDay: props.timeOfDay,
+            weather: props.weather,
+            verified: props.verified,
+            cleared: false,
+            location: { type: 'Point', coordinates: [lng, lat] }
+          };
+
+          // Prefer the same custom marker/popup styles from map.js, but fall back to a simple circle marker.
+          let layer = null;
+          try {
+            const icon = (typeof createRiskIcon === 'function') ? createRiskIcon(risk) : null;
+            layer = icon ? L.marker([lat, lng], { icon, zIndexOffset: 500 }) : null;
+            if (layer && typeof createPopupHTML === 'function') {
+              layer.bindPopup(createPopupHTML(risk), { maxWidth: 300, className: 'risk-popup' });
+            }
+          } catch (e) {
+            layer = null;
+          }
+
+          if (!layer) {
+            const sev = Math.max(1, Math.min(5, parseInt(risk.severity, 10) || 1));
+            const color = sev >= 5 ? '#ef4444' : sev === 4 ? '#f97316' : sev === 3 ? '#F59E0B' : sev === 2 ? '#06b6d4' : '#2563EB';
+            layer = L.circleMarker([lat, lng], {
+              radius: 9,
+              color,
+              weight: 2,
+              fillColor: color,
+              fillOpacity: 0.35
+            });
+            const title = `${risk.roadName || 'Unknown road'} (severity ${sev})`;
+            const desc = risk.description ? `<div style="margin-top:6px;color:var(--text-secondary);">${risk.description}</div>` : '';
+            layer.bindPopup(`<div class="popup-inner"><div style="font-weight:700;">${title}</div>${desc}</div>`, { maxWidth: 300 });
+          }
+
+          askAreaRisksLayer.addLayer(layer);
+          addedLayers++;
+        } catch (e) {
+          skippedFeatures++;
+        }
+      }
+
+      if (latLngs.length > 0 && typeof map.fitBounds === 'function') {
+        try {
+          map.fitBounds(latLngs, { padding: [24, 24], maxZoom: 16 });
+        } catch (e) {}
+      }
     }
 
     // Prepare risks for LLM
@@ -139,28 +344,98 @@ async function askAboutArea() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         risks,
-        question: `I am currently near ${areaName}. What are the main risk patterns around my location? What should I watch out for as a commuter?`
+        question: 'What is the main risk pattern here? What should commuters watch out for?'
       })
     });
 
     const llmJson = await llmRes.json();
     if (llmJson.success) {
-      resultText.textContent = llmJson.answer;
+      // Client-side fallback: strip |||LOCATIONS||| block from answer text
+      let cleanAnswer = llmJson.answer || '';
+      let clientParsedLocations = [];
+
+      // Pattern 1: |||LOCATIONS|||...|||END|||
+      const locBlockRegex1 = /\|\|\|LOCATIONS\|\|\|\s*([\s\S]*?)\s*\|\|\|END\|\|\|/;
+      const locMatch1 = cleanAnswer.match(locBlockRegex1);
+      if (locMatch1) {
+        cleanAnswer = cleanAnswer.replace(locBlockRegex1, '').trim();
+        try { clientParsedLocations = JSON.parse(locMatch1[1].trim()); } catch (e) {}
+      }
+
+      // Pattern 2: |||LOCATIONS||| followed by JSON (no END delimiter)
+      if (clientParsedLocations.length === 0) {
+        const locMatch2 = cleanAnswer.match(/\|\|\|LOCATIONS\|\|\|\s*(\[[\s\S]*)/);
+        if (locMatch2) {
+          cleanAnswer = cleanAnswer.replace(/\|\|\|LOCATIONS\|\|\|[\s\S]*$/, '').trim();
+          let jsonStr = locMatch2[1].trim();
+          if (!jsonStr.endsWith(']')) {
+            const lastBrace = jsonStr.lastIndexOf('}');
+            if (lastBrace > 0) jsonStr = jsonStr.substring(0, lastBrace + 1) + ']';
+          }
+          try { clientParsedLocations = JSON.parse(jsonStr); } catch (e) {}
+        }
+      }
+
+      // Pattern 3: Trailing JSON array with "name" keys
+      if (clientParsedLocations.length === 0) {
+        const trailingJson = cleanAnswer.match(/(\[\s*\{"name"\s*:\s*"[^"]+"\}[\s\S]*$)/);
+        if (trailingJson) {
+          cleanAnswer = cleanAnswer.replace(trailingJson[0], '').trim();
+          let jsonStr = trailingJson[1].trim();
+          if (!jsonStr.endsWith(']')) {
+            const lastBrace = jsonStr.lastIndexOf('}');
+            if (lastBrace > 0) jsonStr = jsonStr.substring(0, lastBrace + 1) + ']';
+          }
+          try { clientParsedLocations = JSON.parse(jsonStr); } catch (e) {}
+        }
+      }
+
+      // Final cleanup: strip any remaining delimiters or stray JSON fragments
+      cleanAnswer = cleanAnswer.replace(/\|\|\|LOCATIONS\|\|\|/g, '').replace(/\|\|\|END\|\|\|/g, '').trim();
+      cleanAnswer = cleanAnswer.replace(/\[?\s*\{"name"\s*:\s*"[^"]*"\}\s*(,\s*\{"name"\s*:\s*"[^"]*"\}\s*)*\]?/g, '').trim();
+
+      resultText.textContent = cleanAnswer;
+
+      // Merge locations from: backend parsed + client parsed + text scanning
+      let allMentioned = [
+        ...(llmJson.mentionedLocations || []),
+        ...clientParsedLocations
+      ];
+
+      // Scan the answer text for LANDMARKS names as another fallback
+      if (typeof LANDMARKS !== 'undefined') {
+        const answerLower = cleanAnswer.toLowerCase();
+        for (const [name, coords] of Object.entries(LANDMARKS)) {
+          if (coords && name.length > 3 && answerLower.includes(name)) {
+            // Check if not already in the list
+            const exists = allMentioned.some(l =>
+              l.name.toLowerCase().includes(name) || name.includes(l.name.toLowerCase())
+            );
+            if (!exists) {
+              allMentioned.push({ name: name.charAt(0).toUpperCase() + name.slice(1) });
+            }
+          }
+        }
+      }
+
+      // Deduplicate
+      const seen = new Set();
+      allMentioned = allMentioned.filter(l => {
+        const key = l.name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      // Plot AI-mentioned locations on the map as temporary markers
+      plotAILocations(allMentioned, llmJson.riskLocations);
     } else {
       resultText.textContent = '⚠️ ' + (llmJson.error || 'AI service unavailable. Please check your API key configuration.');
     }
 
     resultBox.classList.add('visible');
   } catch (err) {
-    if (err.message === 'GEOLOCATION_DENIED') {
-      resultText.textContent = '📍 Location access denied. Please allow location permissions in your browser and try again.';
-    } else if (err.message === 'GEOLOCATION_UNAVAILABLE') {
-      resultText.textContent = '📍 Location unavailable. Please ensure GPS/location services are enabled on your device.';
-    } else if (err.message === 'GEOLOCATION_TIMEOUT') {
-      resultText.textContent = '📍 Location request timed out. Please try again.';
-    } else {
-      resultText.textContent = '⚠️ Could not analyze area. Please try again.';
-    }
+    resultText.textContent = '⚠️ Network error. Please try again.';
     resultBox.classList.add('visible');
   } finally {
     loading.classList.remove('visible');
@@ -168,44 +443,8 @@ async function askAboutArea() {
   }
 }
 
-// ─── Get User Location via Geolocation API ──────────────────────────────────────
-function getUserLocation() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('GEOLOCATION_UNAVAILABLE'));
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        resolve({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          accuracy: position.coords.accuracy
-        });
-      },
-      (error) => {
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            reject(new Error('GEOLOCATION_DENIED'));
-            break;
-          case error.POSITION_UNAVAILABLE:
-            reject(new Error('GEOLOCATION_UNAVAILABLE'));
-            break;
-          case error.TIMEOUT:
-            reject(new Error('GEOLOCATION_TIMEOUT'));
-            break;
-          default:
-            reject(new Error('GEOLOCATION_UNAVAILABLE'));
-        }
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 30000
-      }
-    );
-  });
+async function askAboutMyLocation() {
+  return askAboutArea(true);
 }
 
 // ─── Get Condensed Alert for Route ──────────────────────────────────────────────

@@ -1,69 +1,66 @@
-const mongoose = require('mongoose');
+// ─── Risk Model (Sequelize - MySQL) ─────────────────────────────────────────────
+const { DataTypes } = require('sequelize');
 
-const riskSchema = new mongoose.Schema({
-  type: {
-    type: String,
-    enum: ['sudden_brake', 'blind_turn', 'habitual_violation', 'accident'],
-    required: true
-  },
-  location: {
-    type: {
-      type: String,
-      enum: ['Point'],
-      default: 'Point',
-      required: true
+module.exports = (sequelize) => {
+  const Risk = sequelize.define('Risk', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
     },
-    coordinates: {
-      type: [Number], // [longitude, latitude]
-      required: true
+    type: {
+      type: DataTypes.ENUM('sudden_brake', 'blind_turn', 'habitual_violation', 'accident'),
+      allowNull: false
+    },
+    lat: {
+      type: DataTypes.DOUBLE,
+      allowNull: false
+    },
+    lng: {
+      type: DataTypes.DOUBLE,
+      allowNull: false
+    },
+    severity: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      validate: { min: 1, max: 5 }
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: false
+    },
+    timeOfDay: {
+      type: DataTypes.ENUM('morning_rush', 'afternoon', 'evening_rush', 'night'),
+      allowNull: false
+    },
+    weather: {
+      type: DataTypes.ENUM('clear', 'rain', 'fog'),
+      defaultValue: 'clear'
+    },
+    roadName: {
+      type: DataTypes.STRING(255),
+      allowNull: false
+    },
+    landmark: {
+      type: DataTypes.STRING(255),
+      defaultValue: ''
+    },
+    verified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    cleared: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    clearedAt: {
+      type: DataTypes.DATE,
+      defaultValue: null
     }
-  },
-  severity: {
-    type: Number,
-    min: 1,
-    max: 5,
-    required: true
-  },
-  description: {
-    type: String,
-    required: true
-  },
-  timestamp: {
-    type: Date,
-    default: Date.now
-  },
-  timeOfDay: {
-    type: String,
-    enum: ['morning_rush', 'afternoon', 'evening_rush', 'night'],
-    required: true
-  },
-  weather: {
-    type: String,
-    enum: ['clear', 'rain', 'fog'],
-    default: 'clear'
-  },
-  roadName: {
-    type: String,
-    required: true
-  },
-  landmark: {
-    type: String,
-    default: ''
-  },
-  verified: {
-    type: Boolean,
-    default: false
-  }
-}, {
-  timestamps: true
-});
+  }, {
+    tableName: 'risks',
+    timestamps: true
+  });
 
-// Create 2dsphere index for geospatial queries
-riskSchema.index({ location: '2dsphere' });
-
-// Index for common queries
-riskSchema.index({ severity: -1 });
-riskSchema.index({ type: 1 });
-riskSchema.index({ timeOfDay: 1 });
-
-module.exports = mongoose.model('Risk', riskSchema);
+  return Risk;
+};

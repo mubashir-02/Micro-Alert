@@ -1,15 +1,22 @@
 require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
+const http = require('http');
+const { Server } = require('socket.io');
 const path = require('path');
+const { sequelize } = require('./models');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 
 // ─── Middleware ─────────────────────────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Make io accessible to routes
+app.set('io', io);
 
 // ─── View Engine ────────────────────────────────────────────────────────────────
 app.set('view engine', 'ejs');
@@ -19,29 +26,73 @@ app.set('views', path.join(__dirname, 'views'));
 const apiRoutes = require('./routes/api');
 app.use('/api', apiRoutes);
 
+const adminRoutes = require('./routes/admin');
+app.use('/admin', adminRoutes);
+
+const emergencyRoutes = require('./routes/emergency');
+app.use('/api/emergency', emergencyRoutes);
+
+const speedRoutes = require('./routes/speed');
+app.use('/api/speed', speedRoutes);
+
+const predictionRoutes = require('./routes/prediction');
+app.use('/api/prediction', predictionRoutes);
+
+const routingRoutes = require('./routes/routing');
+app.use('/api/routing', routingRoutes);
+
 // Main page
 app.get('/', (req, res) => {
   res.render('index', {
-    title: 'Micro-Alert · Chennai Road Risk Intelligence'
+    title: 'MicroAlert · Smart Road Safety & Navigation'
   });
 });
 
-// ─── MongoDB Connection ─────────────────────────────────────────────────────────
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/micro-alert';
+// ─── Socket.io ──────────────────────────────────────────────────────────────────
+io.on('connection', (socket) => {
+  console.log('🔌 User connected:', socket.id);
 
-mongoose.connect(MONGODB_URI)
-  .then(() => {
-    console.log('✅ MongoDB connected');
-    app.listen(PORT, () => {
-      console.log(`🚀 Micro-Alert running at http://localhost:${PORT}`);
-    });
-  })
-  .catch(err => {
-    console.error('❌ MongoDB connection error:', err.message);
-    console.log('Starting server without database...');
-    app.listen(PORT, () => {
-      console.log(`🚀 Micro-Alert running at http://localhost:${PORT} (no database)`);
+  // User location update
+  socket.on('location-update', (data) => {
+    socket.broadcast.emit('user-location', {
+      socketId: socket.id,
+      ...data
     });
   });
 
-module.exports = app;
+  // Emergency dispatch broadcast
+  socket.on('emergency-dispatch', (data) => {
+    io.emit('new-dispatch', data);
+  });
+
+  // Hazard update broadcast
+  socket.on('hazard-update', (data) => {
+    io.emit('hazard-changed', data);
+  });
+
+  socket.on('disconnect', () => {
+    io.emit('user-disconnected', { socketId: socket.id });
+  });
+});
+
+// ─── MySQL Connection ───────────────────────────────────────────────────────────
+sequelize.authenticate()
+  .then(() => {
+    console.log('✅ MySQL connected to microalert');
+    return sequelize.sync({ alter: true });
+  })
+  .then(() => {
+    console.log('✅ Database tables synced');
+    server.listen(PORT, () => {
+      console.log(`🚀 MicroAlert running at http://localhost:${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('❌ MySQL connection error:', err.message);
+    console.log('Starting server without database...');
+    server.listen(PORT, () => {
+      console.log(`🚀 MicroAlert running at http://localhost:${PORT} (no database)`);
+    });
+  });
+
+module.exports = { app, server, io };

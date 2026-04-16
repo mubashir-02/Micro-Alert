@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Micro-Alert identifies, aggregates, and communicates small repeated road risks to everyday commuters in Chennai, India. Stay safe on every commute.">
+  <meta name="description" content="MicroAlert — Smart road safety and navigation for Chennai. Real-time hazard alerts, AI-powered route scanning, emergency dispatch, and driver safety ratings.">
   <title><%= title %></title>
 
+  <!-- Google Fonts -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <!-- App CSS -->
@@ -13,22 +15,51 @@
 </head>
 <body>
 
-  <!-- Mobile Sidebar Toggle -->
-  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">☰</button>
+  <!-- Top Navbar -->
+  <nav class="top-navbar" id="topNavbar">
+    <div class="nav-left">
+      <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">☰</button>
+      <div class="nav-brand">
+        <div class="nav-logo">⚡</div>
+        <div class="nav-brand-text">
+          <span class="brand-name">MicroAlert</span>
+          <span class="brand-sub">Smart Road Safety</span>
+        </div>
+      </div>
+    </div>
+    <div class="nav-center">
+      <div class="nav-location" id="navLocation">
+        <span class="nav-loc-icon">📍</span>
+        <span class="nav-loc-text" id="navLocationText">Chennai, India</span>
+      </div>
+    </div>
+    <div class="nav-right">
+      <div class="speed-rating-badge" id="speedBadge" title="Your driving safety rating">
+        <div class="speed-stars" id="speedStars">⭐⭐⭐⭐⭐</div>
+        <span class="speed-label">5.0</span>
+      </div>
+      <button class="nav-alert-btn" id="alertBellBtn" onclick="toggleAlertPanel()" aria-label="Alerts">
+        <span class="alert-bell">🔔</span>
+        <span class="alert-badge" id="alertBadge">0</span>
+      </button>
+      <a href="/admin" class="nav-admin-link" id="adminPanelLink" title="Admin Panel">🛡️</a>
+    </div>
+  </nav>
+
+  <!-- Alert Panel Dropdown -->
+  <div class="alert-panel" id="alertPanel">
+    <div class="alert-panel-header">
+      <h3>🔔 Active Alerts</h3>
+      <button onclick="toggleAlertPanel()" class="alert-panel-close">✕</button>
+    </div>
+    <div class="alert-panel-body" id="alertPanelBody">
+      <div class="alert-empty">No new alerts</div>
+    </div>
+  </div>
 
   <div class="app-container">
     <!-- ─── Sidebar ─────────────────────────────────────────────────────────── -->
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <div class="logo-row">
-          <div class="logo-icon">⚡</div>
-          <div class="logo-text">
-            <h1>Micro‑Alert</h1>
-            <p>Chennai Road Risk Intelligence</p>
-          </div>
-        </div>
-      </div>
-
       <div class="sidebar-body">
 
         <!-- Route Panel -->
@@ -60,10 +91,21 @@
                 🔍 Scan Route for Risks
               </button>
             </form>
+
+            <!-- Route Results -->
             <div class="loading" id="routeLoading">
               <div class="spinner"></div>
               <span class="loading-text">Analyzing route risks with AI…</span>
             </div>
+
+            <!-- Multi-Route Results -->
+            <div class="route-results" id="routeResults" style="display:none;">
+              <div class="route-results-header">📊 Top 3 Routes</div>
+              <div class="route-options" id="routeOptions">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+
             <div class="alert-box" id="routeAlert">
               <div class="alert-label">⚠️ Condensed Alert</div>
               <div class="alert-text" id="routeAlertText"></div>
@@ -74,94 +116,42 @@
           </div>
         </div>
 
-        <!-- Real Examples Panel -->
-        <div class="panel collapsed" id="examplesPanel">
-          <div class="panel-header" onclick="togglePanel('examplesPanel')">
+        <!-- Risk Prediction Panel -->
+        <div class="panel" id="predictionPanel">
+          <div class="panel-header" onclick="togglePanel('predictionPanel')">
             <div class="panel-title">
-              <span class="icon">📌</span> Real Micro‑Risk Examples
+              <span class="icon">⚠️</span> Accident Risk Predictor
             </div>
             <span class="panel-chevron">▼</span>
           </div>
           <div class="panel-body">
-            <p class="examples-intro">
-              Concrete, real‑world patterns Micro‑Alert is built to surface — as a few actionable zones, not 500 pins.
-            </p>
-
-            <div class="examples-grid">
-              <div class="example-card">
-                <div class="example-top">
-                  <div class="example-title">OMR • Sholinganallur (weekday AM)</div>
-                  <span class="example-chip high">High</span>
-                </div>
-                <div class="example-body">
-                  Buses merge aggressively near the signal → chain braking. Peak: <b>8–9 AM</b>, ~<b>300m</b> before signal.
-                </div>
-                <div class="example-actions">
-                  <span class="example-action">Nudge: keep buffer, avoid left lane</span>
-                  <span class="example-action">Pre‑trip alert if ETA overlaps</span>
+            <div class="prediction-display" id="predictionDisplay">
+              <div class="prediction-gauge" id="predictionGauge">
+                <div class="gauge-circle" id="gaugeCircle">
+                  <div class="gauge-value" id="gaugeValue">—</div>
+                  <div class="gauge-label" id="gaugeLabel">Risk Score</div>
                 </div>
               </div>
-
-              <div class="example-card">
-                <div class="example-top">
-                  <div class="example-title">OMR • Thoraipakkam rejoin (weekday PM)</div>
-                  <span class="example-chip med">Med</span>
-                </div>
-                <div class="example-body">
-                  Last‑second service‑lane rejoin + weaving → sudden stops. Peak: <b>6–8 PM</b>.
-                </div>
-                <div class="example-actions">
-                  <span class="example-action">Nudge: merge earlier, stay predictable</span>
-                  <span class="example-action">Suppress unless on your route</span>
-                </div>
-              </div>
-
-              <div class="example-card">
-                <div class="example-top">
-                  <div class="example-title">ECR • Neelankarai (weekend dusk)</div>
-                  <span class="example-chip med">Med</span>
-                </div>
-                <div class="example-body">
-                  Parking slowdowns + pedestrians crossing between cars. Peak: <b>5:30–7 PM</b> weekends.
-                </div>
-                <div class="example-actions">
-                  <span class="example-action">Nudge: slow early, watch crossings</span>
-                  <span class="example-action">Alt route: suggest inland option</span>
-                </div>
-              </div>
-
-              <div class="example-card">
-                <div class="example-top">
-                  <div class="example-title">GST • Chromepet bus‑stop cluster</div>
-                  <span class="example-chip med">Med</span>
-                </div>
-                <div class="example-body">
-                  Bus pull‑outs + autos stopping anywhere → stop‑and‑go braking. Peak: <b>8–10 AM</b>, <b>5:30–8 PM</b>.
-                </div>
-                <div class="example-actions">
-                  <span class="example-action">Nudge: keep distance near bays</span>
-                  <span class="example-action">Reroute only if meaningful</span>
-                </div>
+              <div class="prediction-details" id="predictionDetails">
+                <p class="prediction-hint">Click "Analyze Risk" at your current location</p>
               </div>
             </div>
-
-            <div class="examples-ps">
-              <div class="ps-row">
-                <span class="ps-k">Identify</span>
-                <span class="ps-v">Where are zones, how frequent, what type?</span>
+            <div class="prediction-controls">
+              <div class="pred-row">
+                <select id="predWeather" class="pred-select">
+                  <option value="clear">☀️ Clear</option>
+                  <option value="rain">🌧️ Rain</option>
+                  <option value="fog">🌫️ Fog</option>
+                </select>
+                <select id="predRoadType" class="pred-select">
+                  <option value="urban">🏙️ Urban</option>
+                  <option value="highway">🛣️ Highway</option>
+                  <option value="rural">🌾 Rural</option>
+                </select>
               </div>
-              <div class="ps-row">
-                <span class="ps-k">Aggregate</span>
-                <span class="ps-v">Combine many reports into a reliable score.</span>
-              </div>
-              <div class="ps-row">
-                <span class="ps-k">Communicate</span>
-                <span class="ps-v">Tell only what matters for the next trip.</span>
-              </div>
-              <div class="ps-row">
-                <span class="ps-k">Act</span>
-                <span class="ps-v">Nudge, reroute, or pre‑trip alert — actionable.</span>
-              </div>
+              <button class="btn btn-primary btn-block" onclick="analyzePrediction()">
+                🔮 Analyze Risk Here
+              </button>
             </div>
           </div>
         </div>
@@ -176,10 +166,10 @@
           </div>
           <div class="panel-body">
             <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
-              Click below to detect your current location and get an AI-powered risk analysis of your surroundings.
+              Pan the map to any area in Chennai, then click below to get an AI-powered risk analysis.
             </p>
-            <button class="btn btn-primary btn-block" id="askAreaBtn" onclick="askAboutArea()">
-              📍 Analyze My Location
+            <button class="btn btn-primary btn-block" id="askAreaBtn" onclick="askAboutMyLocation()">
+              🧠 Analyze Current Area
             </button>
             <div class="loading" id="askLoading">
               <div class="spinner"></div>
@@ -292,6 +282,72 @@
         </button>
       </div>
 
+      <!-- Bottom Cards (over map) -->
+      <div class="bottom-cards" id="bottomCards">
+        <!-- Route Info Card -->
+        <div class="bottom-card route-info-card" id="routeInfoCard" style="display:none;">
+          <div class="bcard-header">
+            <span class="bcard-icon">🗺️</span>
+            <span class="bcard-title">Route Info</span>
+          </div>
+          <div class="bcard-body">
+            <div class="bcard-stat"><span class="bcard-stat-label">ETA</span><span class="bcard-stat-value" id="routeETA">—</span></div>
+            <div class="bcard-stat"><span class="bcard-stat-label">Distance</span><span class="bcard-stat-value" id="routeDistance">—</span></div>
+            <div class="bcard-stat"><span class="bcard-stat-label">Hazard</span><span class="bcard-stat-value" id="routeHazard">—</span></div>
+          </div>
+        </div>
+
+        <!-- Emergency Dispatch Card -->
+        <div class="bottom-card emergency-card" id="emergencyDispatchCard">
+          <div class="bcard-header">
+            <span class="bcard-icon">🚨</span>
+            <span class="bcard-title">Emergency Dispatch</span>
+          </div>
+          <div class="bcard-body emergency-btns">
+            <button class="dispatch-btn ambulance" onclick="dispatchEmergency('ambulance')" id="dispatchAmbulance">
+              <span class="dispatch-icon">🚑</span>
+              <span class="dispatch-label">Ambulance</span>
+            </button>
+            <button class="dispatch-btn police" onclick="dispatchEmergency('police')" id="dispatchPolice">
+              <span class="dispatch-icon">👮</span>
+              <span class="dispatch-label">Police</span>
+            </button>
+            <button class="dispatch-btn fire" onclick="dispatchEmergency('fire')" id="dispatchFire">
+              <span class="dispatch-icon">🚒</span>
+              <span class="dispatch-label">Fire</span>
+            </button>
+            <button class="dispatch-btn roadside" onclick="dispatchEmergency('roadside')" id="dispatchRoadside">
+              <span class="dispatch-icon">🆘</span>
+              <span class="dispatch-label">Roadside</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Voice Assistant FAB -->
+      <button class="voice-fab" id="voiceFab" onclick="toggleVoiceAssistant()" aria-label="Voice Assistant">
+        <span class="voice-fab-icon" id="voiceFabIcon">🎙️</span>
+        <span class="voice-fab-pulse" id="voiceFabPulse"></span>
+      </button>
+
+      <!-- Voice Assistant Panel -->
+      <div class="voice-panel" id="voicePanel">
+        <div class="voice-panel-header">
+          <h3>🎙️ Voice Assistant</h3>
+          <span class="voice-status" id="voiceStatus">Say "wake up" to activate</span>
+          <button onclick="closeVoicePanel()" class="voice-panel-close">✕</button>
+        </div>
+        <div class="voice-transcript" id="voiceTranscript">
+          <div class="voice-msg system">👋 Hi! Say <strong>"wake up"</strong> to start, then ask me anything about routes, hazards, or dispatch emergency services.</div>
+        </div>
+        <div class="voice-controls">
+          <button class="voice-listen-btn" id="voiceListenBtn" onclick="startListening()">
+            <span class="mic-icon" id="micIcon">🎤</span>
+            <span id="voiceListenLabel">Tap to Listen</span>
+          </button>
+        </div>
+      </div>
+
       <!-- Emergency Overlay -->
       <div class="emergency-overlay" id="emergencyOverlay">
         <div class="emergency-header">
@@ -308,10 +364,25 @@
   <!-- Toast Container -->
   <div class="toast-container" id="toastContainer"></div>
 
+  <!-- Dispatch Confirmation Modal -->
+  <div class="dispatch-modal" id="dispatchModal">
+    <div class="dispatch-modal-content">
+      <div class="dispatch-modal-icon" id="dispatchModalIcon">🚑</div>
+      <h2 id="dispatchModalTitle">Dispatching Ambulance</h2>
+      <p id="dispatchModalText">Sending your GPS coordinates and route info...</p>
+      <div class="dispatch-modal-spinner">
+        <div class="spinner"></div>
+      </div>
+      <button class="btn btn-secondary" onclick="closeDispatchModal()" id="dispatchModalClose" style="display:none;">Close</button>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
   <script src="/js/map.js"></script>
+  <script src="/js/voice.js"></script>
   <script src="/js/chat.js"></script>
 </body>
 </html>

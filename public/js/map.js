@@ -1,91 +1,90 @@
-// ─── Micro-Alert Map Controller ─────────────────────────────────────────────────
-// Handles Leaflet map, markers, heatmap, routing, and emergency services
+// ─── MicroAlert Map Controller ──────────────────────────────────────────────────
+// Handles Leaflet map, markers, heatmap, routing, speed tracking, prediction
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
 const CHENNAI_CENTER = [13.0827, 80.2707];
 const DEFAULT_ZOOM = 12;
 
-// Chennai landmark coordinates for routing
 const LANDMARKS = {
-  'anna nagar': [13.0850, 80.2101],
-  't. nagar': [13.0418, 80.2341],
-  't nagar': [13.0418, 80.2341],
-  'tambaram': [12.9249, 80.1445],
-  'adyar': [13.0063, 80.2574],
-  'chennai central': [13.0827, 80.2707],
-  'central': [13.0827, 80.2707],
-  'marina beach': [13.0500, 80.2824],
-  'marina': [13.0500, 80.2824],
-  'vadapalani': [13.0604, 80.2185],
-  'koyambedu': [13.0743, 80.2089],
-  'guindy': [13.0067, 80.2206],
-  'sholinganallur': [12.9012, 80.2279],
-  'velachery': [12.9485, 80.2204],
-  'egmore': [13.0734, 80.2428],
-  'kathipara': [13.0123, 80.2121],
-  'spencer plaza': [13.0654, 80.2628],
-  'mylapore': [13.0368, 80.2676],
-  'thiruvanmiyur': [12.9835, 80.2641],
-  'porur': [13.0371, 80.1527],
-  'ashok nagar': [13.0376, 80.2093],
-  'nungambakkam': [13.0601, 80.2489],
-  'gemini': [13.0628, 80.2552],
-  'teynampet': [13.0475, 80.2396],
-  'muttukadu': [12.8256, 80.2463],
-  'ecr': [12.8700, 80.2470],
-  'omr': [12.9500, 80.2400],
-  'mount road': [13.0627, 80.2707],
-  'flower bazaar': [13.0868, 80.2573],
-  'anna salai': [13.0628, 80.2552],
-  'alwarpet': [13.0336, 80.2497],
-  'chromepet': [12.9516, 80.1462],
-  'pallavaram': [12.9675, 80.1491],
-  'perambur': [13.1100, 80.2400],
-  'royapettah': [13.0530, 80.2620],
-  'kilpauk': [13.0840, 80.2420]
+  'anna nagar': [13.0850, 80.2101], 't. nagar': [13.0418, 80.2341],
+  't nagar': [13.0418, 80.2341], 'tambaram': [12.9249, 80.1445],
+  'adyar': [13.0063, 80.2574], 'chennai central': [13.0827, 80.2707],
+  'central': [13.0827, 80.2707], 'marina beach': [13.0500, 80.2824],
+  'marina': [13.0500, 80.2824], 'vadapalani': [13.0604, 80.2185],
+  'koyambedu': [13.0743, 80.2089], 'guindy': [13.0067, 80.2206],
+  'sholinganallur': [12.9012, 80.2279], 'velachery': [12.9485, 80.2204],
+  'egmore': [13.0734, 80.2428], 'kathipara': [13.0123, 80.2121],
+  'spencer plaza': [13.0654, 80.2628], 'mylapore': [13.0368, 80.2676],
+  'thiruvanmiyur': [12.9835, 80.2641], 'porur': [13.0371, 80.1527],
+  'ashok nagar': [13.0376, 80.2093], 'nungambakkam': [13.0601, 80.2489],
+  'gemini': [13.0628, 80.2552], 'teynampet': [13.0475, 80.2396],
+  'muttukadu': [12.8256, 80.2463], 'ecr': [12.8700, 80.2470],
+  'omr': [12.9500, 80.2400], 'mount road': [13.0627, 80.2707],
+  'flower bazaar': [13.0868, 80.2573], 'anna salai': [13.0628, 80.2552],
+  'alwarpet': [13.0336, 80.2497], 'chromepet': [12.9516, 80.1462],
+  'pallavaram': [12.9675, 80.1491], 'perambur': [13.1100, 80.2400],
+  'royapettah': [13.0530, 80.2620], 'kilpauk': [13.0840, 80.2420],
+  'my location': null
 };
 
 // ─── State ──────────────────────────────────────────────────────────────────────
 let map;
+let socket;
 let allRisks = [];
 let riskMarkers = [];
 let heatLayer = null;
 let heatmapVisible = false;
-let routeLayer = null;
+let routeLayers = [];
 let routeDestinationMarkers = [];
-let pickingLocation = false;
 let pickedLatLng = null;
 let emergencyMarkers = [];
-let currentZoom = DEFAULT_ZOOM;
+let userLocationMarker = null;
+let userAccuracyCircle = null;
+let userLat = null, userLng = null;
+let speedWatchId = null;
+let currentSpeed = 0;
+let lastSpeedLogTime = 0;
 
 // ─── Map Initialization ────────────────────────────────────────────────────────
 function initMap() {
   map = L.map('map', {
-    center: CHENNAI_CENTER,
-    zoom: DEFAULT_ZOOM,
-    zoomControl: false,
-    attributionControl: true
+    center: CHENNAI_CENTER, zoom: DEFAULT_ZOOM,
+    zoomControl: false, attributionControl: true
   });
 
-  // Dark tile layer
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 19
+    subdomains: 'abcd', maxZoom: 19
   }).addTo(map);
 
-  // Add zoom control to right side
   L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-  // Map click handler for location picking
   map.on('click', onMapClick);
-  map.on('zoomend', () => {
-    currentZoom = map.getZoom();
-    updateRiskMarkerStyles();
-  });
 
-  // Load risks
   loadAllRisks();
+  initSocket();
+  startSpeedTracking();
+}
+
+// ─── Socket.io ──────────────────────────────────────────────────────────────────
+function initSocket() {
+  try {
+    socket = io();
+    socket.on('new-risk', (risk) => {
+      allRisks.push(risk);
+      renderMarkers();
+      renderRiskList();
+      updateAlertBadge();
+    });
+    socket.on('hazard-changed', () => {
+      loadAllRisks();
+    });
+    socket.on('new-dispatch', (dispatch) => {
+      showToast(`🚨 Emergency dispatch: ${dispatch.type} — Status: ${dispatch.status}`, 'success');
+      updateAlertBadge();
+    });
+  } catch (e) {
+    console.warn('Socket.io not available');
+  }
 }
 
 // ─── Load All Risks ─────────────────────────────────────────────────────────────
@@ -98,161 +97,77 @@ async function loadAllRisks() {
       renderMarkers();
       renderRiskList();
       initHeatLayer();
+      updateAlertBadge();
     }
   } catch (err) {
     console.error('Failed to load risks:', err);
   }
 }
 
+// ─── Update Alert Badge ─────────────────────────────────────────────────────────
+function updateAlertBadge() {
+  const activeRisks = allRisks.filter(r => !r.cleared && r.severity >= 4).length;
+  const badge = document.getElementById('alertBadge');
+  if (badge) badge.textContent = activeRisks;
+
+  // Populate alert panel
+  const body = document.getElementById('alertPanelBody');
+  if (body && activeRisks > 0) {
+    const topAlerts = allRisks.filter(r => !r.cleared && r.severity >= 4).slice(0, 5);
+    body.innerHTML = topAlerts.map(r => `
+      <div style="padding:8px 0;border-bottom:1px solid var(--border-color);font-size:12px;">
+        <div style="font-weight:600;margin-bottom:2px;">⚠️ ${r.roadName}</div>
+        <div style="color:var(--text-secondary);">${r.description?.substring(0, 80)}...</div>
+      </div>
+    `).join('');
+  }
+}
+
 // ─── Render Risk Markers ────────────────────────────────────────────────────────
 function renderMarkers() {
-  // Clear existing markers
   riskMarkers.forEach(m => map.removeLayer(m));
   riskMarkers = [];
 
   allRisks.forEach(risk => {
     const [lng, lat] = risk.location.coordinates;
-    const marker = L.circleMarker([lat, lng], getRiskCircleStyle(risk, currentZoom));
-
-    marker.bindPopup(createPopupHTML(risk), {
-      maxWidth: 300,
-      className: 'risk-popup'
-    });
-
-    marker.bindTooltip(createRiskTooltipHTML(risk), {
-      direction: 'top',
-      offset: [0, -8],
-      opacity: 1,
-      className: 'risk-tooltip',
-      sticky: true
-    });
-
-    marker.on('mouseover', () => {
-      marker.setStyle({
-        weight: Math.max(2.5, (marker.options.weight || 2) + 1),
-        fillOpacity: Math.min(0.55, (marker.options.fillOpacity || 0.35) + 0.12)
-      });
-      if (marker.bringToFront) marker.bringToFront();
-    });
-    marker.on('mouseout', () => {
-      marker.setStyle(getRiskCircleStyle(risk, currentZoom));
-    });
-
+    const marker = L.marker([lat, lng], { icon: createRiskIcon(risk) });
+    marker.bindPopup(createPopupHTML(risk), { maxWidth: 300, className: 'risk-popup' });
     marker.addTo(map);
     riskMarkers.push(marker);
   });
 }
 
-// ─── Risk Marker Styling (Clean, Zoom-scaled Circles) ───────────────────────────
-function getRiskCircleStyle(risk, zoom) {
-  const s = Math.max(1, Math.min(5, Number(risk.severity) || 1));
-
-  // Radius grows a bit with zoom, but stays compact to reduce clutter
-  const zoomFactor = Math.max(0, zoom - 11); // zoom 12 => 1, 16 => 5
-  const base = 4.5 + (s * 0.7);
-  const radius = Math.min(12, base + zoomFactor * 0.55);
-
-  let color = '#eab308'; // low
-  let fill = 'rgba(234, 179, 8, 0.20)';
-  if (s === 3) {
-    color = '#f97316';
-    fill = 'rgba(249, 115, 22, 0.22)';
-  } else if (s >= 4) {
-    color = '#ef4444';
-    fill = 'rgba(239, 68, 68, 0.20)';
-  }
-
-  return {
-    radius,
-    color,
-    weight: 2,
-    opacity: 0.85,
-    fillColor: fill,
-    fillOpacity: 0.35,
-    className: `risk-circle s${s}`
-  };
-}
-
-function updateRiskMarkerStyles() {
-  if (!riskMarkers || riskMarkers.length === 0) return;
-  riskMarkers.forEach((layer, idx) => {
-    const risk = allRisks[idx];
-    if (!risk || !layer || !layer.setStyle) return;
-    layer.setStyle(getRiskCircleStyle(risk, currentZoom));
+function createRiskIcon(risk) {
+  const markerClass = risk.cleared ? 'cleared' : risk.type;
+  const label = risk.cleared ? '✓' : risk.severity;
+  return L.divIcon({
+    html: `<div class="custom-marker ${markerClass}">${label}</div>`,
+    className: '', iconSize: [28, 28], iconAnchor: [14, 14], popupAnchor: [0, -16]
   });
 }
 
-function createRiskTooltipHTML(risk) {
-  const typeLabels = {
-    sudden_brake: 'Sudden Braking',
-    blind_turn: 'Blind Turn',
-    habitual_violation: 'Habitual Violation',
-    accident: 'Accident Zone'
-  };
-
-  const s = Math.max(1, Math.min(5, Number(risk.severity) || 1));
-  const band = s >= 4 ? 'high' : s === 3 ? 'med' : 'low';
-  const bandLabel = s >= 4 ? 'High' : s === 3 ? 'Medium' : 'Low';
-
-  const title = (risk.roadName || 'Unknown road').toString();
-  const desc = (risk.description || '').toString();
-  const type = typeLabels[risk.type] || (risk.type || 'Risk');
-
-  return `
-    <div class="risk-tt">
-      <div class="risk-tt-top">
-        <div class="risk-tt-title">${escapeHTML(title)}</div>
-        <div class="risk-tt-chip ${band}">${bandLabel} • S${s}</div>
-      </div>
-      <div class="risk-tt-desc">${escapeHTML(type)}${desc ? ` — ${escapeHTML(desc)}` : ''}</div>
-    </div>
-  `;
-}
-
-function escapeHTML(str) {
-  return String(str)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
-
-// ─── Create Popup HTML ──────────────────────────────────────────────────────────
 function createPopupHTML(risk) {
-  const typeLabels = {
-    sudden_brake: 'Sudden Braking',
-    blind_turn: 'Blind Turn',
-    habitual_violation: 'Habitual Violation',
-    accident: '💥 Accident Zone'
-  };
-
-  const timeLabels = {
-    morning_rush: '🌅 Morning Rush',
-    afternoon: '☀️ Afternoon',
-    evening_rush: '🌆 Evening Rush',
-    night: '🌙 Night'
-  };
-
-  const weatherIcons = {
-    clear: '☀️',
-    rain: '🌧️',
-    fog: '🌫️'
-  };
+  const typeLabels = { sudden_brake: 'Sudden Braking', blind_turn: 'Blind Turn', habitual_violation: 'Habitual Violation', accident: '💥 Accident Zone' };
+  const timeLabels = { morning_rush: '🌅 Morning Rush', afternoon: '☀️ Afternoon', evening_rush: '🌆 Evening Rush', night: '🌙 Night' };
+  const weatherIcons = { clear: '☀️', rain: '🌧️', fog: '🌫️' };
 
   let severityDots = '';
   for (let i = 1; i <= 5; i++) {
-    const activeClass = i <= risk.severity ? `active s${risk.severity}` : '';
-    severityDots += `<div class="severity-dot ${activeClass}"></div>`;
+    const ac = i <= risk.severity ? `active s${risk.severity}` : '';
+    severityDots += `<div class="severity-dot ${ac}"></div>`;
   }
 
-  const riskId = risk._id;
+  const riskId = risk._id || risk.id;
+  const clearedBanner = risk.cleared
+    ? `<div style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:#4ade80;font-weight:600;">✅ Cleared by admin</div>`
+    : '';
 
   return `
     <div class="popup-inner">
-      <span class="popup-type ${risk.type}">${typeLabels[risk.type]}</span>
+      <span class="popup-type ${risk.cleared ? 'cleared' : risk.type}">${risk.cleared ? '✅ Cleared' : typeLabels[risk.type]}</span>
       <h3>${risk.roadName}</h3>
       ${risk.landmark ? `<p style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">📍 ${risk.landmark}</p>` : ''}
+      ${clearedBanner}
       <p class="popup-desc">${risk.description}</p>
       <div class="popup-meta">
         <span>${timeLabels[risk.timeOfDay]}</span>
@@ -261,9 +176,7 @@ function createPopupHTML(risk) {
       </div>
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Severity</div>
       <div class="severity-bar">${severityDots}</div>
-      <button class="popup-explain-btn" onclick="explainRisk('${riskId}')">
-        🧠 Explain This Risk
-      </button>
+      <button class="popup-explain-btn" onclick="explainRisk('${riskId}')">🧠 Explain This Risk</button>
       <div id="explain-${riskId}" class="popup-explain-result" style="display:none;"></div>
     </div>
   `;
@@ -275,19 +188,9 @@ function initHeatLayer() {
     const [lng, lat] = r.location.coordinates;
     return [lat, lng, r.severity * 0.2];
   });
-
   heatLayer = L.heatLayer(heatData, {
-    radius: 30,
-    blur: 20,
-    maxZoom: 15,
-    max: 1.0,
-    gradient: {
-      0.2: '#3b82f6',
-      0.4: '#06b6d4',
-      0.6: '#eab308',
-      0.8: '#f97316',
-      1.0: '#ef4444'
-    }
+    radius: 30, blur: 20, maxZoom: 15, max: 1.0,
+    gradient: { 0.2: '#2563EB', 0.4: '#06b6d4', 0.6: '#F59E0B', 0.8: '#f97316', 1.0: '#ef4444' }
   });
 }
 
@@ -296,132 +199,41 @@ function toggleHeatmap() {
   if (heatmapVisible) {
     map.removeLayer(heatLayer);
     btn.classList.remove('active');
-    // Show markers
     riskMarkers.forEach(m => m.addTo(map));
   } else {
     heatLayer.addTo(map);
     btn.classList.add('active');
-    // Optionally hide markers for cleaner heat view
     riskMarkers.forEach(m => map.removeLayer(m));
   }
   heatmapVisible = !heatmapVisible;
 }
 
-// ─── Route Scanning ─────────────────────────────────────────────────────────────
+// ─── Route Scanning with Multi-Route Support ────────────────────────────────────
 function fillRoute(start, end) {
   document.getElementById('startLocation').value = start;
   document.getElementById('endLocation').value = end;
-  // Close any open dropdowns
-  document.getElementById('startDropdown').innerHTML = '';
   document.getElementById('startDropdown').style.display = 'none';
-  document.getElementById('endDropdown').innerHTML = '';
   document.getElementById('endDropdown').style.display = 'none';
 }
 
-// Resolve a location name to [lat, lng] — tries local landmarks first, then Nominatim geocoding
 async function resolveLocation(name) {
   const key = name.toLowerCase().trim();
-
-  // Try local landmarks first for instant results
+  if (key === 'my location' && userLat) return [userLat, userLng];
   if (LANDMARKS[key]) return LANDMARKS[key];
   for (const [k, v] of Object.entries(LANDMARKS)) {
-    if (k.includes(key) || key.includes(k)) return v;
+    if (v && (k.includes(key) || key.includes(k))) return v;
   }
-
-  // Fall back to Nominatim geocoding for any location worldwide
   return await geocodeLocation(name);
 }
 
 async function geocodeLocation(query) {
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`,
-      { headers: { 'Accept-Language': 'en' } }
-    );
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`, { headers: { 'Accept-Language': 'en' } });
     const data = await res.json();
-    if (data && data.length > 0) {
-      return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-    }
-  } catch (e) {
-    console.warn('Geocoding failed:', e);
-  }
+    if (data && data.length > 0) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+  } catch (e) { console.warn('Geocoding failed:', e); }
   return null;
 }
-
-// ─── Autocomplete ───────────────────────────────────────────────────────────────
-let autocompleteTimers = {};
-
-function setupAutocomplete(inputId, dropdownId) {
-  const input = document.getElementById(inputId);
-  const dropdown = document.getElementById(dropdownId);
-
-  input.addEventListener('input', () => {
-    const query = input.value.trim();
-
-    // Clear previous timer
-    if (autocompleteTimers[inputId]) clearTimeout(autocompleteTimers[inputId]);
-
-    if (query.length < 3) {
-      dropdown.innerHTML = '';
-      dropdown.style.display = 'none';
-      return;
-    }
-
-    // Debounce: wait 350ms after user stops typing
-    autocompleteTimers[inputId] = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`,
-          { headers: { 'Accept-Language': 'en' } }
-        );
-        const results = await res.json();
-
-        if (results && results.length > 0) {
-          dropdown.innerHTML = results.map(r => {
-            const displayName = r.display_name.length > 60
-              ? r.display_name.substring(0, 60) + '…'
-              : r.display_name;
-            return `<div class="autocomplete-item" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${r.display_name.split(',').slice(0, 3).join(',')}">
-              <span class="ac-icon">📍</span>
-              <span class="ac-text">${displayName}</span>
-            </div>`;
-          }).join('');
-          dropdown.style.display = 'block';
-
-          // Add click handlers
-          dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
-            item.addEventListener('click', () => {
-              input.value = item.dataset.name;
-              input.dataset.lat = item.dataset.lat;
-              input.dataset.lon = item.dataset.lon;
-              dropdown.innerHTML = '';
-              dropdown.style.display = 'none';
-            });
-          });
-        } else {
-          dropdown.innerHTML = '<div class="autocomplete-item no-results"><span class="ac-text">No results found</span></div>';
-          dropdown.style.display = 'block';
-        }
-      } catch (e) {
-        console.warn('Autocomplete fetch failed:', e);
-        dropdown.style.display = 'none';
-      }
-    }, 350);
-  });
-
-  // Close dropdown when clicking outside
-  document.addEventListener('click', (e) => {
-    if (!input.contains(e.target) && !dropdown.contains(e.target)) {
-      dropdown.style.display = 'none';
-    }
-  });
-}
-
-// Initialize autocomplete on both inputs after DOM loads
-document.addEventListener('DOMContentLoaded', () => {
-  setupAutocomplete('startLocation', 'startDropdown');
-  setupAutocomplete('endLocation', 'endDropdown');
-});
 
 async function scanRoute() {
   const startInput = document.getElementById('startLocation');
@@ -434,152 +246,262 @@ async function scanRoute() {
     return;
   }
 
-  // Show loading
   document.getElementById('routeLoading').classList.add('visible');
   document.getElementById('routeAlert').classList.remove('visible');
+  document.getElementById('routeResults').style.display = 'none';
   document.getElementById('scanRouteBtn').disabled = true;
 
-  // Check if coords were cached from autocomplete selection
-  let startCoords = null;
-  let endCoords = null;
-
-  if (startInput.dataset.lat && startInput.dataset.lon) {
-    startCoords = [parseFloat(startInput.dataset.lat), parseFloat(startInput.dataset.lon)];
-  } else {
-    startCoords = await resolveLocation(startName);
-  }
-
-  if (endInput.dataset.lat && endInput.dataset.lon) {
-    endCoords = [parseFloat(endInput.dataset.lat), parseFloat(endInput.dataset.lon)];
-  } else {
-    endCoords = await resolveLocation(endName);
-  }
+  let startCoords = startInput.dataset.lat ? [parseFloat(startInput.dataset.lat), parseFloat(startInput.dataset.lon)] : await resolveLocation(startName);
+  let endCoords = endInput.dataset.lat ? [parseFloat(endInput.dataset.lat), parseFloat(endInput.dataset.lon)] : await resolveLocation(endName);
 
   if (!startCoords || !endCoords) {
-    showToast('Could not find one or both locations. Please try different search terms.', 'error');
+    showToast('Could not find one or both locations.', 'error');
     document.getElementById('routeLoading').classList.remove('visible');
     document.getElementById('scanRouteBtn').disabled = false;
     return;
   }
 
-  // Clear previous route and destination markers
-  if (routeLayer) map.removeLayer(routeLayer);
-  clearRouteDestinationMarkers();
+  // Clear previous routes
+  routeLayers.forEach(l => map.removeLayer(l));
+  routeLayers = [];
+  routeDestinationMarkers.forEach(m => map.removeLayer(m));
+  routeDestinationMarkers = [];
 
   try {
-    // Try OSRM for a realistic route
-    const routeCoords = await fetchOSRMRoute(startCoords, endCoords);
+    // Get multi-route results
+    const routeRes = await fetch('/api/routing/find-routes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        startLat: startCoords[0], startLng: startCoords[1],
+        endLat: endCoords[0], endLng: endCoords[1]
+      })
+    });
+    const routeJson = await routeRes.json();
 
-    routeLayer = L.polyline(routeCoords, {
-      color: '#3b82f6',
-      weight: 4,
-      opacity: 0.8,
-      dashArray: '8, 8',
-      lineCap: 'round'
-    }).addTo(map);
+    if (routeJson.success && routeJson.data.routes.length > 0) {
+      const routes = routeJson.data.routes;
 
-    // Add destination markers (Start & End)
-    const startMarker = L.marker(startCoords, {
-      icon: L.divIcon({
-        html: `<div class="destination-marker start-marker">
-                 <div class="dest-marker-pin">
-                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                     <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>
-                   </svg>
-                 </div>
-                 <div class="dest-marker-label">START</div>
-                 <div class="dest-marker-pulse"></div>
-               </div>`,
-        className: '',
-        iconSize: [40, 56],
-        iconAnchor: [20, 52],
-        popupAnchor: [0, -52]
-      }),
-      zIndexOffset: 900
-    }).addTo(map);
-    startMarker.bindPopup(`<div class="popup-inner"><span class="popup-type" style="background:rgba(16,185,129,0.15);color:#10b981;">START POINT</span><h3>${startName}</h3><p class="popup-desc">Route departure location</p></div>`);
-    routeDestinationMarkers.push(startMarker);
+      // Draw all routes (dimmed) then highlight first
+      routes.forEach((route, idx) => {
+        const polyline = L.polyline(route.coordinates, {
+          color: route.color, weight: idx === 0 ? 5 : 3,
+          opacity: idx === 0 ? 0.9 : 0.4,
+          dashArray: idx === 0 ? null : '8, 8'
+        }).addTo(map);
+        routeLayers.push(polyline);
+      });
 
-    const endMarker = L.marker(endCoords, {
-      icon: L.divIcon({
-        html: `<div class="destination-marker end-marker">
-                 <div class="dest-marker-pin">
-                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                     <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>
-                   </svg>
-                 </div>
-                 <div class="dest-marker-label">END</div>
-                 <div class="dest-marker-pulse"></div>
-               </div>`,
-        className: '',
-        iconSize: [40, 56],
-        iconAnchor: [20, 52],
-        popupAnchor: [0, -52]
-      }),
-      zIndexOffset: 900
-    }).addTo(map);
-    endMarker.bindPopup(`<div class="popup-inner"><span class="popup-type" style="background:rgba(239,68,68,0.15);color:#ef4444;">DESTINATION</span><h3>${endName}</h3><p class="popup-desc">Route arrival location</p></div>`);
-    routeDestinationMarkers.push(endMarker);
+      // Show route options panel
+      const optionsEl = document.getElementById('routeOptions');
+      optionsEl.innerHTML = routes.map((r, i) => {
+        const hazLevel = r.hazardScore > 30 ? 'high' : r.hazardScore > 15 ? 'medium' : 'low';
+        return `
+          <div class="route-option ${i === 0 ? 'active' : ''}" onclick="selectRoute(${i})" id="routeOpt${i}">
+            <div class="route-color-dot" style="background:${r.color}"></div>
+            <div class="route-opt-info">
+              <div class="route-opt-name">${r.name}</div>
+              <div class="route-opt-meta">
+                <span>${r.distance} km</span>
+                <span>${r.duration} min</span>
+              </div>
+            </div>
+            <div class="route-opt-hazard ${hazLevel}">${hazLevel.toUpperCase()}</div>
+          </div>
+        `;
+      }).join('');
+      document.getElementById('routeResults').style.display = 'block';
 
-    map.fitBounds(routeLayer.getBounds(), { padding: [60, 60] });
+      // Update bottom route info card
+      const best = routes[0];
+      document.getElementById('routeETA').textContent = `${best.duration} min`;
+      document.getElementById('routeDistance').textContent = `${best.distance} km`;
+      const hazLevel = best.hazardScore > 30 ? '🔴 High' : best.hazardScore > 15 ? '🟡 Med' : '🟢 Low';
+      document.getElementById('routeHazard').textContent = hazLevel;
+      document.getElementById('routeInfoCard').style.display = 'block';
 
-    // Fetch risks along route
-    const res = await fetch(`/api/risks/along-route?startLat=${startCoords[0]}&startLng=${startCoords[1]}&endLat=${endCoords[0]}&endLng=${endCoords[1]}`);
-    const json = await res.json();
+      // Add start/end markers
+      addDestinationMarkers(startCoords, endCoords, startName, endName);
+      map.fitBounds(routeLayers[0].getBounds(), { padding: [60, 60] });
+    }
 
-    if (json.success && json.data.length > 0) {
-      // Call condensed alert API
-      await getCondensedAlert(json.data);
+    // Fetch risks along route for alert
+    const riskRes = await fetch(`/api/risks/along-route?startLat=${startCoords[0]}&startLng=${startCoords[1]}&endLat=${endCoords[0]}&endLng=${endCoords[1]}`);
+    const riskJson = await riskRes.json();
+
+    if (riskJson.success && riskJson.data.length > 0) {
+      await getCondensedAlert(riskJson.data);
     } else {
       const alertBox = document.getElementById('routeAlert');
       alertBox.classList.add('visible');
-      document.getElementById('routeAlertText').textContent = '✅ No significant risks detected along this route. Drive safely!';
+      document.getElementById('routeAlertText').textContent = '✅ No significant risks along this route. Drive safely!';
     }
   } catch (err) {
     console.error('Route scan error:', err);
-    showToast('Error scanning route. Please try again.', 'error');
+    showToast('Error scanning route.', 'error');
   } finally {
     document.getElementById('routeLoading').classList.remove('visible');
     document.getElementById('scanRouteBtn').disabled = false;
   }
 }
 
-async function fetchOSRMRoute(start, end) {
+function selectRoute(idx) {
+  routeLayers.forEach((l, i) => {
+    l.setStyle({
+      weight: i === idx ? 5 : 3,
+      opacity: i === idx ? 0.9 : 0.3,
+      dashArray: i === idx ? null : '8, 8'
+    });
+    if (i === idx) l.bringToFront();
+  });
+
+  document.querySelectorAll('.route-option').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+}
+
+function addDestinationMarkers(startCoords, endCoords, startName, endName) {
+  const startMarker = L.marker(startCoords, {
+    icon: L.divIcon({
+      html: `<div class="destination-marker start-marker">
+               <div class="dest-marker-pin"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></div>
+               <div class="dest-marker-label">START</div>
+               <div class="dest-marker-pulse"></div>
+             </div>`,
+      className: '', iconSize: [40, 56], iconAnchor: [20, 52]
+    }), zIndexOffset: 900
+  }).addTo(map);
+  startMarker.bindPopup(`<div class="popup-inner"><span class="popup-type" style="background:rgba(16,185,129,0.15);color:#10b981;">START</span><h3>${startName}</h3></div>`);
+  routeDestinationMarkers.push(startMarker);
+
+  const endMarker = L.marker(endCoords, {
+    icon: L.divIcon({
+      html: `<div class="destination-marker end-marker">
+               <div class="dest-marker-pin"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></div>
+               <div class="dest-marker-label">END</div>
+               <div class="dest-marker-pulse"></div>
+             </div>`,
+      className: '', iconSize: [40, 56], iconAnchor: [20, 52]
+    }), zIndexOffset: 900
+  }).addTo(map);
+  endMarker.bindPopup(`<div class="popup-inner"><span class="popup-type" style="background:rgba(239,68,68,0.15);color:#ef4444;">DESTINATION</span><h3>${endName}</h3></div>`);
+  routeDestinationMarkers.push(endMarker);
+}
+
+// ─── Speed Tracking ─────────────────────────────────────────────────────────────
+function startSpeedTracking() {
+  if (!navigator.geolocation) return;
+
+  speedWatchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      currentSpeed = pos.coords.speed ? pos.coords.speed * 3.6 : 0; // m/s to km/h
+
+      // Update nav location
+      reverseGeocode(userLat, userLng).then(name => {
+        if (name) {
+          const el = document.getElementById('navLocationText');
+          if (el) el.textContent = name;
+        }
+      });
+
+      // Broadcast location via socket
+      if (socket) {
+        socket.emit('location-update', { lat: userLat, lng: userLng, speed: currentSpeed });
+      }
+
+      // Log speed every 30 seconds
+      const now = Date.now();
+      if (now - lastSpeedLogTime > 30000 && currentSpeed > 0) {
+        lastSpeedLogTime = now;
+        logSpeed(currentSpeed, userLat, userLng);
+      }
+    },
+    (err) => { /* silent fail */ },
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+  );
+}
+
+async function logSpeed(speed, lat, lng) {
   try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
-    const res = await fetch(url);
-    const data = await res.json();
-
-    if (data.routes && data.routes.length > 0) {
-      return data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+    const res = await fetch('/api/speed/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ speed, speedLimit: 40, lat, lng })
+    });
+    const json = await res.json();
+    if (json.success) {
+      updateSpeedBadge(json.data.rating);
     }
-  } catch (e) {
-    console.warn('OSRM routing failed, using straight line:', e);
-  }
-
-  // Fallback: create a simple polyline with intermediate points
-  const points = [];
-  const steps = 20;
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const lat = start[0] + t * (end[0] - start[0]);
-    const lng = start[1] + t * (end[1] - start[1]);
-    // Add slight randomness for visual interest
-    const jitter = Math.sin(t * Math.PI * 3) * 0.003;
-    points.push([lat + jitter, lng + jitter * 0.5]);
-  }
-  return points;
+  } catch (e) { /* silent */ }
 }
 
-// ─── Clear Route Destination Markers ────────────────────────────────────────────
-function clearRouteDestinationMarkers() {
-  routeDestinationMarkers.forEach(m => map.removeLayer(m));
-  routeDestinationMarkers = [];
+function updateSpeedBadge(rating) {
+  const starsEl = document.getElementById('speedStars');
+  const labelEl = document.querySelector('.speed-label');
+  if (!starsEl || !labelEl) return;
+
+  const stars = '⭐'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
+  starsEl.textContent = stars;
+  labelEl.textContent = rating.toFixed(1);
 }
 
-// ─── Map Click Handler ──────────────────────────────────────────────────────────
+// ─── Accident Risk Prediction ───────────────────────────────────────────────────
+async function analyzePrediction() {
+  const center = map.getCenter();
+  const weather = document.getElementById('predWeather')?.value || 'clear';
+  const roadType = document.getElementById('predRoadType')?.value || 'urban';
+
+  const hour = new Date().getHours();
+  let timeOfDay = 'afternoon';
+  if (hour >= 6 && hour < 10) timeOfDay = 'morning_rush';
+  else if (hour >= 16 && hour < 20) timeOfDay = 'evening_rush';
+  else if (hour >= 20 || hour < 6) timeOfDay = 'night';
+
+  try {
+    const res = await fetch('/api/prediction/risk-score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lat: center.lat, lng: center.lng,
+        speed: currentSpeed, speedLimit: 40,
+        weather, timeOfDay, roadType
+      })
+    });
+    const json = await res.json();
+
+    if (json.success) {
+      const d = json.data;
+      const gauge = document.getElementById('gaugeCircle');
+      const gaugeVal = document.getElementById('gaugeValue');
+      const gaugeLbl = document.getElementById('gaugeLabel');
+      const details = document.getElementById('predictionDetails');
+
+      gaugeVal.textContent = d.totalScore;
+      gaugeLbl.textContent = d.riskLabel;
+      gauge.style.borderColor = d.riskColor;
+      gaugeVal.style.color = d.riskColor;
+
+      details.innerHTML = `
+        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;"><span>History</span><span style="font-weight:600;">${d.breakdown.accidentHistory}/50</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Speed</span><span style="font-weight:600;">${d.breakdown.speedAnalysis}/25</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Weather</span><span style="font-weight:600;">${d.breakdown.weather}/15</span></div>
+          <div style="display:flex;justify-content:space-between;"><span>Time</span><span style="font-weight:600;">${d.breakdown.timeOfDay}/10</span></div>
+        </div>
+        <div style="font-size:11px;color:var(--accent-amber);margin-top:6px;">
+          💡 ${d.recommendations[0]}
+        </div>
+      `;
+    }
+  } catch (err) {
+    showToast('Risk prediction failed', 'error');
+  }
+}
+
+// ─── Map Click ──────────────────────────────────────────────────────────────────
 function onMapClick(e) {
-  // For location picking in report form
   pickedLatLng = e.latlng;
   document.getElementById('pickedLat').textContent = e.latlng.lat.toFixed(6);
   document.getElementById('pickedLng').textContent = e.latlng.lng.toFixed(6);
@@ -591,20 +513,14 @@ function onMapClick(e) {
 async function showEmergency() {
   const overlay = document.getElementById('emergencyOverlay');
   const btn = document.getElementById('emergencyBtn');
-
-  if (overlay.classList.contains('visible')) {
-    closeEmergency();
-    return;
-  }
+  if (overlay.classList.contains('visible')) { closeEmergency(); return; }
 
   const center = map.getCenter();
   try {
     const res = await fetch(`/api/emergency?lat=${center.lat}&lng=${center.lng}`);
     const json = await res.json();
-
     if (json.success) {
-      const list = document.getElementById('emergencyList');
-      list.innerHTML = json.data.map(s => `
+      document.getElementById('emergencyList').innerHTML = json.data.map(s => `
         <div class="emergency-item" onclick="flyToEmergency(${s.lat}, ${s.lng})">
           <span class="em-icon">${s.icon}</span>
           <div class="em-info">
@@ -615,62 +531,38 @@ async function showEmergency() {
           ${s.distance !== undefined ? `<span class="em-distance">${s.distance.toFixed(1)} km</span>` : ''}
         </div>
       `).join('');
-
       overlay.classList.add('visible');
       btn.classList.add('active');
 
-      // Add markers for emergency services
-      clearEmergencyMarkers();
+      emergencyMarkers.forEach(m => map.removeLayer(m));
+      emergencyMarkers = [];
       json.data.forEach(s => {
-        const marker = L.marker([s.lat, s.lng], {
-          icon: L.divIcon({
-            html: `<div style="font-size:24px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">${s.icon}</div>`,
-            className: '',
-            iconSize: [30, 30],
-            iconAnchor: [15, 15]
-          })
+        const m = L.marker([s.lat, s.lng], {
+          icon: L.divIcon({ html: `<div style="font-size:24px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));">${s.icon}</div>`, className: '', iconSize: [30, 30], iconAnchor: [15, 15] })
         }).addTo(map);
-        marker.bindPopup(`<div class="popup-inner"><h3>${s.name}</h3><p class="popup-desc">${s.address}<br>📞 ${s.phone}</p></div>`);
-        emergencyMarkers.push(marker);
+        m.bindPopup(`<div class="popup-inner"><h3>${s.name}</h3><p class="popup-desc">${s.address}<br>📞 ${s.phone}</p></div>`);
+        emergencyMarkers.push(m);
       });
     }
-  } catch (err) {
-    showToast('Could not load emergency services', 'error');
-  }
+  } catch (err) { showToast('Could not load emergency services', 'error'); }
 }
 
 function closeEmergency() {
   document.getElementById('emergencyOverlay').classList.remove('visible');
   document.getElementById('emergencyBtn').classList.remove('active');
-  clearEmergencyMarkers();
-}
-
-function clearEmergencyMarkers() {
   emergencyMarkers.forEach(m => map.removeLayer(m));
   emergencyMarkers = [];
 }
 
-function flyToEmergency(lat, lng) {
-  map.flyTo([lat, lng], 15, { duration: 1 });
-}
+function flyToEmergency(lat, lng) { map.flyTo([lat, lng], 15, { duration: 1 }); }
 
 // ─── Risk List ──────────────────────────────────────────────────────────────────
 function renderRiskList() {
-  const top5 = allRisks
-    .sort((a, b) => b.severity - a.severity)
-    .slice(0, 5);
-
+  const top5 = [...allRisks].sort((a, b) => b.severity - a.severity).slice(0, 5);
   document.getElementById('riskCount').textContent = allRisks.length;
 
-  const typeLabels = {
-    sudden_brake: 'Sudden Brake',
-    blind_turn: 'Blind Turn',
-    habitual_violation: 'Violation',
-    accident: 'Accident'
-  };
-
-  const list = document.getElementById('riskList');
-  list.innerHTML = top5.map(r => {
+  const typeLabels = { sudden_brake: 'Sudden Brake', blind_turn: 'Blind Turn', habitual_violation: 'Violation', accident: 'Accident' };
+  document.getElementById('riskList').innerHTML = top5.map(r => {
     const [lng, lat] = r.location.coordinates;
     return `
       <div class="risk-item" onclick="flyToRisk(${lat}, ${lng})">
@@ -678,9 +570,7 @@ function renderRiskList() {
         <div class="risk-info">
           <h4>${r.roadName}</h4>
           <p>${r.description}</p>
-          <div class="risk-meta">
-            <span class="risk-tag ${r.type}">${typeLabels[r.type]}</span>
-          </div>
+          <div class="risk-meta"><span class="risk-tag ${r.type}">${typeLabels[r.type]}</span></div>
         </div>
       </div>
     `;
@@ -689,165 +579,76 @@ function renderRiskList() {
 
 function flyToRisk(lat, lng) {
   map.flyTo([lat, lng], 16, { duration: 1 });
-  // Close sidebar on mobile
-  if (window.innerWidth <= 768) {
-    document.getElementById('sidebar').classList.remove('open');
-  }
+  if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('open');
 }
 
-// ─── Center Map ─────────────────────────────────────────────────────────────────
-function centerMap() {
-  map.flyTo(CHENNAI_CENTER, DEFAULT_ZOOM, { duration: 1 });
-}
-
-// ─── My Location (Geolocation) ──────────────────────────────────────────────────
-let userLocationMarker = null;
-let userAccuracyCircle = null;
+// ─── Utility Functions ──────────────────────────────────────────────────────────
+function centerMap() { map.flyTo(CHENNAI_CENTER, DEFAULT_ZOOM, { duration: 1 }); }
 
 function locateMe() {
   const btn = document.getElementById('locateBtn');
-
-  if (!navigator.geolocation) {
-    showToast('Geolocation is not supported by your browser', 'error');
-    return;
-  }
-
-  // Show loading state
+  if (!navigator.geolocation) { showToast('Geolocation not supported', 'error'); return; }
   btn.classList.add('locating');
   showToast('Detecting your location…', 'success');
 
   navigator.geolocation.getCurrentPosition(
-    (position) => {
-      const { latitude, longitude, accuracy } = position.coords;
-
-      // Remove old markers
+    (pos) => {
+      const { latitude, longitude, accuracy } = pos.coords;
+      userLat = latitude; userLng = longitude;
       if (userLocationMarker) map.removeLayer(userLocationMarker);
       if (userAccuracyCircle) map.removeLayer(userAccuracyCircle);
 
-      // Add accuracy circle
-      userAccuracyCircle = L.circle([latitude, longitude], {
-        radius: accuracy,
-        color: '#3b82f6',
-        fillColor: '#3b82f6',
-        fillOpacity: 0.08,
-        weight: 1,
-        opacity: 0.3
-      }).addTo(map);
-
-      // Add pulsing blue dot marker
+      userAccuracyCircle = L.circle([latitude, longitude], { radius: accuracy, color: '#2563EB', fillColor: '#2563EB', fillOpacity: 0.08, weight: 1, opacity: 0.3 }).addTo(map);
       userLocationMarker = L.marker([latitude, longitude], {
         icon: L.divIcon({
-          html: `<div class="my-location-dot">
-                   <div class="my-location-pulse"></div>
-                   <div class="my-location-core"></div>
-                 </div>`,
-          className: '',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
-        }),
-        zIndexOffset: 1000
+          html: `<div class="my-location-dot"><div class="my-location-pulse"></div><div class="my-location-core"></div></div>`,
+          className: '', iconSize: [24, 24], iconAnchor: [12, 12]
+        }), zIndexOffset: 1000
       }).addTo(map);
 
-      userLocationMarker.bindPopup(
-        `<div class="popup-inner">
-           <h3>📍 You are here</h3>
-           <p class="popup-desc" style="margin-bottom:4px;">Lat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}</p>
-           <p class="popup-desc">Accuracy: ~${Math.round(accuracy)}m</p>
-         </div>`
-      );
-
-      // Fly to location
       const zoomLevel = accuracy < 100 ? 17 : accuracy < 500 ? 15 : 14;
       map.flyTo([latitude, longitude], zoomLevel, { duration: 1.5 });
 
-      // Auto-fill the start location input with coordinates
       const startInput = document.getElementById('startLocation');
-      if (startInput && !startInput.value) {
-        startInput.value = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-      }
+      if (startInput && !startInput.value) startInput.value = 'My Location';
 
-      // Try to reverse-geocode for a friendly name
       reverseGeocode(latitude, longitude).then(name => {
-        if (name && startInput) {
-          startInput.value = name;
-          showToast(`📍 Located: ${name}`, 'success');
-        } else {
-          showToast('📍 Location found!', 'success');
-        }
+        if (name) showToast(`📍 Located: ${name}`, 'success');
+        else showToast('📍 Location found!', 'success');
       });
 
       btn.classList.remove('locating');
       btn.classList.add('active');
     },
-    (error) => {
+    (err) => {
       btn.classList.remove('locating');
-      let msg = 'Could not detect your location.';
-      switch (error.code) {
-        case error.PERMISSION_DENIED:
-          msg = 'Location permission denied. Please allow location access.';
-          break;
-        case error.POSITION_UNAVAILABLE:
-          msg = 'Location information is unavailable.';
-          break;
-        case error.TIMEOUT:
-          msg = 'Location request timed out. Try again.';
-          break;
-      }
-      showToast(msg, 'error');
+      showToast('Could not detect location', 'error');
     },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 30000
-    }
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
   );
 }
 
 async function reverseGeocode(lat, lng) {
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`,
-      { headers: { 'Accept-Language': 'en' } }
-    );
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16`, { headers: { 'Accept-Language': 'en' } });
     const data = await res.json();
     if (data && data.address) {
       const a = data.address;
-      const parts = [
-        a.road || a.neighbourhood || a.hamlet || '',
-        a.suburb || a.city_district || a.town || a.city || ''
-      ].filter(Boolean);
-      return parts.join(', ') || data.display_name?.split(',').slice(0, 2).join(',') || null;
+      return [a.road || a.neighbourhood || '', a.suburb || a.city || ''].filter(Boolean).join(', ') || null;
     }
-  } catch (e) {
-    console.warn('Reverse geocoding failed:', e);
-  }
+  } catch (e) {}
   return null;
 }
 
-// ─── Panel Toggle ───────────────────────────────────────────────────────────────
-function togglePanel(panelId) {
-  const panel = document.getElementById(panelId);
-  panel.classList.toggle('collapsed');
-}
+function togglePanel(panelId) { document.getElementById(panelId).classList.toggle('collapsed'); }
 
-// ─── Sidebar Toggle (Mobile) ────────────────────────────────────────────────────
-document.getElementById('sidebarToggle').addEventListener('click', () => {
-  document.getElementById('sidebar').classList.toggle('open');
-});
-
-// ─── Toast Notifications ────────────────────────────────────────────────────────
 function showToast(message, type = 'success') {
   const container = document.getElementById('toastContainer');
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   toast.innerHTML = `${type === 'success' ? '✅' : '❌'} ${message}`;
   container.appendChild(toast);
-
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateY(16px)';
-    setTimeout(() => toast.remove(), 300);
-  }, 3500);
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(16px)'; setTimeout(() => toast.remove(), 300); }, 3500);
 }
 
 // ─── Report Risk ────────────────────────────────────────────────────────────────
@@ -858,91 +659,86 @@ async function submitReport() {
   const roadName = document.getElementById('reportRoadName').value.trim();
   const landmark = document.getElementById('reportLandmark').value.trim();
 
-  if (!description) {
-    showToast('Please enter a description', 'error');
-    return;
-  }
-
-  if (!pickedLatLng) {
-    showToast('Please click on the map to pick a location', 'error');
-    return;
-  }
+  if (!description) { showToast('Please enter a description', 'error'); return; }
+  if (!pickedLatLng) { showToast('Please click on the map to pick a location', 'error'); return; }
 
   try {
     const res = await fetch('/api/risks/report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type,
-        severity: parseInt(severity),
-        description,
-        roadName: roadName || 'Unknown Road',
-        landmark,
-        lat: pickedLatLng.lat,
-        lng: pickedLatLng.lng
-      })
+      body: JSON.stringify({ type, severity: parseInt(severity), description, roadName: roadName || 'Unknown Road', landmark, lat: pickedLatLng.lat, lng: pickedLatLng.lng })
     });
-
     const json = await res.json();
     if (json.success) {
-      // Add temporary marker
       const marker = L.marker([pickedLatLng.lat, pickedLatLng.lng], {
-        icon: L.divIcon({
-          html: `<div class="custom-marker user-reported">${severity}</div>`,
-          className: '',
-          iconSize: [28, 28],
-          iconAnchor: [14, 14]
-        })
+        icon: L.divIcon({ html: `<div class="custom-marker user-reported">${severity}</div>`, className: '', iconSize: [28, 28], iconAnchor: [14, 14] })
       }).addTo(map);
       marker.bindPopup(createPopupHTML(json.data));
       riskMarkers.push(marker);
-
-      // Add to allRisks
       allRisks.push(json.data);
       renderRiskList();
+      if (heatLayer) { map.removeLayer(heatLayer); initHeatLayer(); if (heatmapVisible) heatLayer.addTo(map); }
 
-      // Update heatmap
-      if (heatLayer) {
-        map.removeLayer(heatLayer);
-        initHeatLayer();
-        if (heatmapVisible) heatLayer.addTo(map);
-      }
-
-      // Reset form
       document.getElementById('reportDescription').value = '';
       document.getElementById('reportRoadName').value = '';
       document.getElementById('reportLandmark').value = '';
       document.getElementById('pickedCoords').style.display = 'none';
       document.getElementById('locationPickerHint').style.display = 'flex';
       pickedLatLng = null;
-
-      showToast('Risk reported successfully! Pending verification.');
-    } else {
-      showToast('Error: ' + json.error, 'error');
-    }
-  } catch (err) {
-    showToast('Network error. Please try again.', 'error');
-  }
+      showToast('Risk reported successfully!');
+    } else { showToast('Error: ' + json.error, 'error'); }
+  } catch (err) { showToast('Network error.', 'error'); }
 }
 
-// ─── Share Alert ────────────────────────────────────────────────────────────────
 function shareAlert() {
   const text = document.getElementById('routeAlertText').textContent;
   if (text) {
-    navigator.clipboard.writeText(`🚨 Micro-Alert: ${text}`).then(() => {
-      showToast('Alert copied to clipboard!');
-    }).catch(() => {
-      // Fallback
-      const textarea = document.createElement('textarea');
-      textarea.value = `🚨 Micro-Alert: ${text}`;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      showToast('Alert copied to clipboard!');
-    });
+    navigator.clipboard.writeText(`🚨 MicroAlert: ${text}`).then(() => showToast('Alert copied!')).catch(() => showToast('Alert copied!'));
   }
 }
 
+// ─── Autocomplete ───────────────────────────────────────────────────────────────
+let autocompleteTimers = {};
+function setupAutocomplete(inputId, dropdownId) {
+  const input = document.getElementById(inputId);
+  const dropdown = document.getElementById(dropdownId);
+  input.addEventListener('input', () => {
+    const query = input.value.trim();
+    if (autocompleteTimers[inputId]) clearTimeout(autocompleteTimers[inputId]);
+    if (query.length < 3) { dropdown.style.display = 'none'; return; }
+    autocompleteTimers[inputId] = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`, { headers: { 'Accept-Language': 'en' } });
+        const results = await res.json();
+        if (results && results.length > 0) {
+          dropdown.innerHTML = results.map(r => {
+            const dn = r.display_name.length > 60 ? r.display_name.substring(0, 60) + '…' : r.display_name;
+            return `<div class="autocomplete-item" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${r.display_name.split(',').slice(0, 3).join(',')}"><span class="ac-icon">📍</span><span class="ac-text">${dn}</span></div>`;
+          }).join('');
+          dropdown.style.display = 'block';
+          dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
+            item.addEventListener('click', () => {
+              input.value = item.dataset.name;
+              input.dataset.lat = item.dataset.lat;
+              input.dataset.lon = item.dataset.lon;
+              dropdown.style.display = 'none';
+            });
+          });
+        } else { dropdown.innerHTML = '<div class="autocomplete-item no-results"><span class="ac-text">No results</span></div>'; dropdown.style.display = 'block'; }
+      } catch (e) { dropdown.style.display = 'none'; }
+    }, 350);
+  });
+  document.addEventListener('click', (e) => { if (!input.contains(e.target) && !dropdown.contains(e.target)) dropdown.style.display = 'none'; });
+}
+
+// ─── Mobile Sidebar ─────────────────────────────────────────────────────────────
+document.getElementById('sidebarToggle')?.addEventListener('click', () => {
+  document.getElementById('sidebar').classList.toggle('open');
+});
+
 // ─── Initialize ─────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', initMap);
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  setupAutocomplete('startLocation', 'startDropdown');
+  setupAutocomplete('endLocation', 'endDropdown');
+});

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="MicroAlert Admin Panel — Manage road hazards, monitor driver safety, dispatch emergency services, and view analytics.">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <!-- ─── Top Navbar ─────────────────────────────────────────────────────── -->
+  <nav class="admin-nav">
+    <div class="nav-left">
+      <a href="/" class="nav-back" title="Back to Dashboard">
+        <span>←</span>
+      </a>
+      <div class="nav-brand">
+        <div class="nav-logo">⚡</div>
+        <div class="nav-brand-text">
+          <span class="brand-name">MicroAlert</span>
+          <span class="brand-sub">Admin Control Center</span>
+        </div>
+      </div>
+    </div>
+    <div class="nav-right">
+      <div class="live-indicator">
+        <span class="live-dot"></span>
+        <span>LIVE</span>
+      </div>
+      <button class="refresh-btn" onclick="refreshDashboard()">🔄 Refresh</button>
+    </div>
+  </nav>
+
+  <!-- ─── Main Content ───────────────────────────────────────────────────── -->
+  <main class="admin-main">
+    <!-- ─── Stats Row ──────────────────────────────────────────────────── -->
+    <section class="stats-row" id="statsSection">
+      <div class="stat-card glass">
+        <div class="stat-icon total">📊</div>
+        <div class="stat-info">
+          <div class="stat-value" id="totalRisks">0</div>
+          <div class="stat-label">Total Risks</div>
+        </div>
+      </div>
+      <div class="stat-card glass">
+        <div class="stat-icon active">🔴</div>
+        <div class="stat-info">
+          <div class="stat-value" id="activeRisks">0</div>
+          <div class="stat-label">Active</div>
+        </div>
+      </div>
+      <div class="stat-card glass">
+        <div class="stat-icon cleared">✅</div>
+        <div class="stat-info">
+          <div class="stat-value" id="clearedRisks">0</div>
+          <div class="stat-label">Cleared</div>
+        </div>
+      </div>
+      <div class="stat-card glass">
+        <div class="stat-icon rate">📈</div>
+        <div class="stat-info">
+          <div class="stat-value" id="clearanceRate">0%</div>
+          <div class="stat-label">Clearance Rate</div>
+        </div>
+      </div>
+      <div class="stat-card glass">
+        <div class="stat-icon dispatch">🚨</div>
+        <div class="stat-info">
+          <div class="stat-value" id="activeDispatches">0</div>
+          <div class="stat-label">Active Dispatches</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Charts Row ─────────────────────────────────────────────────── -->
+    <section class="charts-row">
+      <div class="chart-card glass">
+        <div class="chart-header">
+          <h3>📊 Risk Types</h3>
+          <span class="chart-badge">Active vs Cleared</span>
+        </div>
+        <div class="chart-wrap"><canvas id="typeChart"></canvas></div>
+      </div>
+      <div class="chart-card glass">
+        <div class="chart-header">
+          <h3>⚠️ Severity Distribution</h3>
+          <span class="chart-badge">All Risks</span>
+        </div>
+        <div class="chart-wrap"><canvas id="severityChart"></canvas></div>
+      </div>
+      <div class="chart-card glass">
+        <div class="chart-header">
+          <h3>🕐 Time of Day</h3>
+          <span class="chart-badge">Risk Patterns</span>
+        </div>
+        <div class="chart-wrap"><canvas id="timeChart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ─── Emergency Dispatches ───────────────────────────────────────── -->
+    <section class="dispatch-section glass" id="dispatchSection">
+      <div class="section-header">
+        <h2>🚨 Emergency Dispatches</h2>
+        <button class="btn btn-sm btn-secondary" onclick="loadDispatches()">🔄 Refresh</button>
+      </div>
+      <div class="dispatch-grid" id="dispatchGrid">
+        <div class="empty-state">No active dispatches</div>
+      </div>
+    </section>
+
+    <!-- ─── Hazard Table ───────────────────────────────────────────────── -->
+    <section class="table-section glass" id="tableSection">
+      <div class="section-header">
+        <h2>🗂️ Hazard Management</h2>
+        <div class="table-actions">
+          <div class="action-group">
+            <span class="selected-label"><span id="selectedCount">0</span> selected</span>
+            <button class="btn btn-sm btn-primary" id="clearSelectedBtn" onclick="clearSelected()" disabled>✅ Clear Selected</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters-bar">
+        <div class="filter-group">
+          <select id="filterType" onchange="loadRisks()">
+            <option value="all">All Types</option>
+            <option value="sudden_brake">🛑 Sudden Brake</option>
+            <option value="blind_turn">🔄 Blind Turn</option>
+            <option value="habitual_violation">⚠️ Violation</option>
+            <option value="accident">💥 Accident</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <select id="filterSeverity" onchange="loadRisks()">
+            <option value="all">All Severities</option>
+            <option value="5">5 – Critical</option>
+            <option value="4">4 – High</option>
+            <option value="3">3 – Moderate</option>
+            <option value="2">2 – Low</option>
+            <option value="1">1 – Minor</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <select id="filterStatus" onchange="loadRisks()">
+            <option value="all">All Status</option>
+            <option value="active">Active Only</option>
+            <option value="cleared">Cleared Only</option>
+          </select>
+        </div>
+        <div class="filter-group search-group">
+          <input type="text" id="filterSearch" placeholder="🔍 Search road, landmark, description..." oninput="debounceSearch()">
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrapper">
+        <table class="hazard-table" id="hazardTable">
+          <thead>
+            <tr>
+              <th class="th-check"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+              <th>Sev.</th>
+              <th>Type</th>
+              <th>Location</th>
+              <th>Description</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="hazardTableBody"></tbody>
+        </table>
+        <div class="table-empty" id="tableEmpty" style="display:none;">
+          <div class="empty-icon">🔍</div>
+          <p>No hazards found for the current filters.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="/js/admin.js"></script>
+</body>
+</html>

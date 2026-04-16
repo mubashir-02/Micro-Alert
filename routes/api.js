@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const Risk = require('../models/Risk');
+const { Risk, Hazard } = require('../models');
+const { Op, fn, col, literal } = require('sequelize');
 const axios = require('axios');
 
 // ─── LLM Helper ────────────────────────────────────────────────────────────────
@@ -30,7 +31,6 @@ async function callLLM(systemPrompt, userPrompt) {
   }
 
   if (provider === 'nvidia') {
-    // NVIDIA NIM API via OpenAI SDK
     const { default: OpenAI } = await import('openai');
     const openai = new OpenAI({
       apiKey: process.env.NVIDIA_API_KEY,
@@ -48,7 +48,6 @@ async function callLLM(systemPrompt, userPrompt) {
       stream: true
     });
 
-    // Collect streamed response into a single string
     let result = '';
     for await (const chunk of completion) {
       const content = chunk.choices[0]?.delta?.content || '';
@@ -72,11 +71,34 @@ async function callLLM(systemPrompt, userPrompt) {
   return completion.choices[0].message.content.trim();
 }
 
+// ─── Helper: distance in km between two lat/lng points ──────────────────────────
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 // ─── GET /api/risks ─ All risks ────────────────────────────────────────────────
 router.get('/risks', async (req, res) => {
   try {
-    const risks = await Risk.find().sort({ severity: -1 }).lean();
-    res.json({ success: true, data: risks });
+    const risks = await Risk.findAll({
+      order: [['severity', 'DESC']],
+      raw: true
+    });
+    // Map to match old MongoDB format for frontend compatibility
+    const mapped = risks.map(r => ({
+      ...r,
+      _id: r.id,
+      location: {
+        type: 'Point',
+        coordinates: [r.lng, r.lat]
+      }
+    }));
+    res.json({ success: true, data: mapped });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -90,26 +112,38 @@ router.get('/risks/nearby', async (req, res) => {
       return res.status(400).json({ success: false, error: 'lng and lat are required' });
     }
 
-    const risks = await Risk.find({
-      location: {
-        $near: {
-          $geometry: {
-            type: 'Point',
-            coordinates: [parseFloat(lng), parseFloat(lat)]
-          },
-          $maxDistance: parseInt(radius)
-        }
-      }
-    }).lean();
+    const userLat = parseFloat(lat);
+    const userLng = parseFloat(lng);
+    const radiusKm = parseInt(radius) / 1000;
+
+    // Approximate bounding box
+    const latDelta = radiusKm / 111;
+    const lngDelta = radiusKm / (111 * Math.cos(userLat * Math.PI / 180));
+
+    const risks = await Risk.findAll({
+      where: {
+        lat: { [Op.between]: [userLat - latDelta, userLat + latDelta] },
+        lng: { [Op.between]: [userLng - lngDelta, userLng + lngDelta] }
+      },
+      raw: true
+    });
+
+    // Filter by actual distance
+    const nearby = risks.filter(r =>
+      haversine(userLat, userLng, r.lat, r.lng) <= radiusKm
+    );
 
     // Return as GeoJSON FeatureCollection
     const geojson = {
       type: 'FeatureCollection',
-      features: risks.map(r => ({
+      features: nearby.map(r => ({
         type: 'Feature',
-        geometry: r.location,
+        geometry: {
+          type: 'Point',
+          coordinates: [r.lng, r.lat]
+        },
         properties: {
-          _id: r._id,
+          _id: r.id,
           type: r.type,
           severity: r.severity,
           description: r.description,
@@ -118,7 +152,7 @@ router.get('/risks/nearby', async (req, res) => {
           roadName: r.roadName,
           landmark: r.landmark,
           verified: r.verified,
-          timestamp: r.timestamp
+          timestamp: r.createdAt
         }
       }))
     };
@@ -142,42 +176,42 @@ router.get('/risks/along-route', async (req, res) => {
     const eLat = parseFloat(endLat);
     const eLng = parseFloat(endLng);
 
-    // Generate intermediate points along the route for better coverage
-    const numPoints = 10;
-    const searchPromises = [];
-    for (let i = 0; i <= numPoints; i++) {
-      const fraction = i / numPoints;
-      const lat = sLat + fraction * (eLat - sLat);
-      const lng = sLng + fraction * (eLng - sLng);
-      searchPromises.push(
-        Risk.find({
-          location: {
-            $near: {
-              $geometry: { type: 'Point', coordinates: [lng, lat] },
-              $maxDistance: 800 // 800m corridor around route
-            }
-          }
-        }).lean()
-      );
-    }
+    // Build bounding box with corridor buffer
+    const buffer = 0.01; // ~1.1km
+    const minLat = Math.min(sLat, eLat) - buffer;
+    const maxLat = Math.max(sLat, eLat) + buffer;
+    const minLng = Math.min(sLng, eLng) - buffer;
+    const maxLng = Math.max(sLng, eLng) + buffer;
 
-    const results = await Promise.all(searchPromises);
-    const seen = new Set();
-    const uniqueRisks = [];
-    for (const batch of results) {
-      for (const risk of batch) {
-        const id = risk._id.toString();
-        if (!seen.has(id)) {
-          seen.add(id);
-          uniqueRisks.push(risk);
-        }
+    const risks = await Risk.findAll({
+      where: {
+        lat: { [Op.between]: [minLat, maxLat] },
+        lng: { [Op.between]: [minLng, maxLng] }
+      },
+      order: [['severity', 'DESC']],
+      raw: true
+    });
+
+    // Filter by distance to the route line (within 800m corridor)
+    const corridorKm = 0.8;
+    const uniqueRisks = risks.filter(r => {
+      // Check distance to any of 10 intermediate points along route
+      for (let i = 0; i <= 10; i++) {
+        const f = i / 10;
+        const lat = sLat + f * (eLat - sLat);
+        const lng = sLng + f * (eLng - sLng);
+        if (haversine(lat, lng, r.lat, r.lng) <= corridorKm) return true;
       }
-    }
+      return false;
+    });
 
-    // Sort by severity descending
-    uniqueRisks.sort((a, b) => b.severity - a.severity);
+    const mapped = uniqueRisks.map(r => ({
+      ...r,
+      _id: r.id,
+      location: { type: 'Point', coordinates: [r.lng, r.lat] }
+    }));
 
-    res.json({ success: true, data: uniqueRisks });
+    res.json({ success: true, data: mapped });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -195,12 +229,73 @@ router.post('/llm/summarize', async (req, res) => {
       `- ${r.type} on ${r.roadName}${r.landmark ? ' near ' + r.landmark : ''}: severity ${r.severity}/5. ${r.description}. Time: ${r.timeOfDay}, Weather: ${r.weather}.`
     ).join('\n');
 
-    const systemPrompt = `You are a road-safety analyst for Chennai, India. Given micro-risk data for a specific area, answer the user's question in exactly 2 clear sentences. Be specific about road names and risk patterns. Do not use bullet points.`;
+    const systemPrompt = `You are a road-safety analyst for Chennai, India. Given micro-risk data for a specific area, answer the user's question in a clear paragraph. Be specific about road names and risk patterns. Do not use bullet points.
+
+IMPORTANT: After your analysis text, add a newline and then output a JSON block listing every specific location/road/junction/landmark you mentioned, in this exact format:
+|||LOCATIONS|||
+[{"name":"Kathipara Junction"},{"name":"GST Road"},{"name":"Inner Ring Road"}]
+|||END|||
+
+Include ALL specific place names, roads, junctions, and landmarks from your analysis.`;
 
     const userPrompt = `Road risk data:\n${riskSummaries}\n\nUser question: ${question}`;
 
-    const answer = await callLLM(systemPrompt, userPrompt);
-    res.json({ success: true, answer });
+    const rawAnswer = await callLLM(systemPrompt, userPrompt);
+
+    // Parse out locations JSON from the response — try multiple patterns
+    let answer = rawAnswer;
+    let mentionedLocations = [];
+
+    // Pattern 1: |||LOCATIONS|||...|||END|||
+    let locMatch = rawAnswer.match(/\|\|\|LOCATIONS\|\|\|\s*([\s\S]*?)\s*\|\|\|END\|\|\|/);
+    if (locMatch) {
+      answer = rawAnswer.replace(/\|\|\|LOCATIONS\|\|\|[\s\S]*?\|\|\|END\|\|\|/, '').trim();
+      try { mentionedLocations = JSON.parse(locMatch[1].trim()); } catch (e) {}
+    }
+
+    // Pattern 2: |||LOCATIONS||| followed by JSON (no END delimiter — LLM cut off)
+    if (mentionedLocations.length === 0) {
+      locMatch = rawAnswer.match(/\|\|\|LOCATIONS\|\|\|\s*(\[[\s\S]*)/);
+      if (locMatch) {
+        answer = rawAnswer.replace(/\|\|\|LOCATIONS\|\|\|[\s\S]*$/, '').trim();
+        let jsonStr = locMatch[1].trim();
+        // Try to fix incomplete JSON — find last complete object
+        if (!jsonStr.endsWith(']')) {
+          const lastBrace = jsonStr.lastIndexOf('}');
+          if (lastBrace > 0) jsonStr = jsonStr.substring(0, lastBrace + 1) + ']';
+        }
+        try { mentionedLocations = JSON.parse(jsonStr); } catch (e) {}
+      }
+    }
+
+    // Pattern 3: Trailing JSON array even without |||LOCATIONS|||
+    if (mentionedLocations.length === 0) {
+      const trailingJson = rawAnswer.match(/(\[\s*\{"name"\s*:\s*"[^"]+"\}[\s\S]*$)/);
+      if (trailingJson) {
+        answer = rawAnswer.replace(trailingJson[0], '').trim();
+        let jsonStr = trailingJson[1].trim();
+        if (!jsonStr.endsWith(']')) {
+          const lastBrace = jsonStr.lastIndexOf('}');
+          if (lastBrace > 0) jsonStr = jsonStr.substring(0, lastBrace + 1) + ']';
+        }
+        try { mentionedLocations = JSON.parse(jsonStr); } catch (e) {}
+      }
+    }
+
+    // Final cleanup of any remaining markers
+    answer = answer.replace(/\|\|\|LOCATIONS\|\|\|/g, '').replace(/\|\|\|END\|\|\|/g, '').trim();
+
+    // Also extract coordinates from the source risk data for matching
+    const riskLocations = risks.map(r => ({
+      name: r.roadName,
+      landmark: r.landmark || '',
+      lat: r.lat,
+      lng: r.lng,
+      type: r.type,
+      severity: r.severity
+    })).filter(r => r.lat && r.lng);
+
+    res.json({ success: true, answer, mentionedLocations, riskLocations });
   } catch (err) {
     console.error('LLM Summarize error:', err.message);
     res.status(500).json({ success: false, error: 'LLM service unavailable. ' + err.message });
@@ -243,10 +338,8 @@ router.post('/risks/report', async (req, res) => {
     const risk = await Risk.create({
       type,
       description,
-      location: {
-        type: 'Point',
-        coordinates: [parseFloat(lng), parseFloat(lat)]
-      },
+      lat: parseFloat(lat),
+      lng: parseFloat(lng),
       severity: parseInt(severity) || 3,
       timeOfDay: timeOfDay || 'afternoon',
       weather: weather || 'clear',
@@ -255,105 +348,32 @@ router.post('/risks/report', async (req, res) => {
       verified: false
     });
 
-    res.json({ success: true, data: risk });
+    // Map to frontend format
+    const mapped = {
+      ...risk.toJSON(),
+      _id: risk.id,
+      location: { type: 'Point', coordinates: [risk.lng, risk.lat] }
+    };
+
+    // Broadcast via Socket.io
+    const io = req.app.get('io');
+    if (io) io.emit('new-risk', mapped);
+
+    res.json({ success: true, data: mapped });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ─── GET /api/emergency ─ Mock emergency services ──────────────────────────────
-router.get('/emergency', async (req, res) => {
+// ─── GET /api/hazards ─ All active hazards ─────────────────────────────────────
+router.get('/hazards', async (req, res) => {
   try {
-    const { lat, lng } = req.query;
-    // Mock emergency services data for Chennai
-    const emergencyServices = [
-      {
-        type: 'hospital',
-        name: 'Apollo Hospital, Greams Road',
-        address: '21, Greams Lane, Off Greams Road, Chennai',
-        phone: '044-2829-3333',
-        lat: 13.0604,
-        lng: 80.2522,
-        icon: '🏥'
-      },
-      {
-        type: 'hospital',
-        name: 'MIOT International Hospital',
-        address: '4/112, Mount Poonamallee Road, Manapakkam',
-        phone: '044-4200-0000',
-        lat: 13.0285,
-        lng: 80.1694,
-        icon: '🏥'
-      },
-      {
-        type: 'hospital',
-        name: 'Government General Hospital',
-        address: 'Park Town, Chennai',
-        phone: '044-2530-5000',
-        lat: 13.0878,
-        lng: 80.2785,
-        icon: '🏥'
-      },
-      {
-        type: 'hospital',
-        name: 'Fortis Malar Hospital',
-        address: '52, 1st Main Road, Adyar, Chennai',
-        phone: '044-4289-2222',
-        lat: 13.0067,
-        lng: 80.2565,
-        icon: '🏥'
-      },
-      {
-        type: 'police',
-        name: 'T. Nagar Police Station',
-        address: 'South Usman Road, T. Nagar',
-        phone: '044-2434-1212',
-        lat: 13.0418,
-        lng: 80.2341,
-        icon: '🚔'
-      },
-      {
-        type: 'police',
-        name: 'Adyar Traffic Police',
-        address: 'Adyar, Chennai',
-        phone: '044-2440-1818',
-        lat: 13.0063,
-        lng: 80.2574,
-        icon: '🚔'
-      },
-      {
-        type: 'police',
-        name: 'Anna Nagar Police Station',
-        address: '2nd Avenue, Anna Nagar',
-        phone: '044-2628-5555',
-        lat: 13.0850,
-        lng: 80.2101,
-        icon: '🚔'
-      },
-      {
-        type: 'police',
-        name: 'Guindy Traffic Police',
-        address: 'Guindy, Chennai',
-        phone: '044-2234-0000',
-        lat: 13.0067,
-        lng: 80.2206,
-        icon: '🚔'
-      }
-    ];
-
-    // Sort by distance to user if coordinates provided
-    if (lat && lng) {
-      const userLat = parseFloat(lat);
-      const userLng = parseFloat(lng);
-      emergencyServices.forEach(s => {
-        const dLat = s.lat - userLat;
-        const dLng = s.lng - userLng;
-        s.distance = Math.sqrt(dLat * dLat + dLng * dLng) * 111; // rough km
-      });
-      emergencyServices.sort((a, b) => a.distance - b.distance);
-    }
-
-    res.json({ success: true, data: emergencyServices });
+    const hazards = await Hazard.findAll({
+      where: { active: true },
+      order: [['severity', 'DESC']],
+      raw: true
+    });
+    res.json({ success: true, data: hazards });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
