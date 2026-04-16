@@ -52,6 +52,10 @@ app.use('/api/prediction-engine', predictionEngineRoutes);
 const gamificationRoutes = require('./gamification');
 app.use('/api/game', gamificationRoutes);
 
+// ─── Feature F: Offline Risk Map API (new, additive) ────────────────────────────
+const offlineRoutes = require('./routes/offline');
+app.use('/api/offline', offlineRoutes);
+
 // Main page
 app.get('/', (req, res) => {
   res.render('index', {
