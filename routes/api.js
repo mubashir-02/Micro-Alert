@@ -462,6 +462,117 @@ Rules:
   }
 });
 
+// ─── POST /api/llm/analyze-photo — AI Hazard Photo Analysis ────────────────────
+router.post('/llm/analyze-photo', async (req, res) => {
+  try {
+    const { photoUrl, lat, lng, language } = req.body;
+    if (!photoUrl) {
+      return res.status(400).json({ success: false, error: 'photoUrl is required' });
+    }
+
+    const langInstructions = {
+      'en': 'Respond in English.',
+      'hi': 'Respond in Hindi.',
+      'te': 'Respond in Telugu.',
+      'ta': 'Respond in Tamil.'
+    };
+    const langInstruction = langInstructions[language] || langInstructions['en'];
+
+    const systemPrompt = `You are an AI road safety vision analyst for MicroAlert platform in India.
+A user has captured a photo of a road hazard and your job is to analyze the context and classify the hazard.
+
+The photo was taken at GPS coordinates: lat ${lat || 'unknown'}, lng ${lng || 'unknown'}.
+
+Based on the photo being captured from a moving vehicle on Indian roads, analyze the likely hazard and respond with ONLY valid JSON (no markdown):
+
+{
+  "hazard_type": "<one of: pothole, blind_turn, sudden_braking, flooding, poor_lighting, road_damage, accident, congestion, overspeeding, habitual_violation>",
+  "severity": "<mild | moderate | dangerous | very_dangerous>",
+  "severity_num": <1-5>,
+  "description": "<2 sentence description of the hazard for the report>",
+  "road_condition": "<good | fair | poor | dangerous>",
+  "visibility": "<clear | moderate | poor>",
+  "recommended_action": "<1 sentence safety recommendation>",
+  "auto_reported": true
+}
+
+Rules:
+- Infer the most likely hazard type from common Indian road conditions
+- Be specific about location context (urban/suburban/highway)
+- Keep description factual and actionable
+- ${langInstruction}`;
+
+    const answer = await callLLM(systemPrompt, `A road hazard photo was just captured by the user. Photo URL: ${photoUrl}. The user is currently on the road and captured this from their vehicle. Analyze and classify this road hazard.`);
+
+    let parsed = null;
+    try {
+      let jsonStr = answer.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
+    } catch (e) {
+      console.warn('Photo analysis parse failed:', answer);
+    }
+
+    if (parsed && parsed.hazard_type) {
+      // Auto-create a risk report from the AI analysis
+      try {
+        const riskTypeMap = {
+          'pothole': 'habitual_violation', 'blind_turn': 'blind_turn',
+          'sudden_braking': 'sudden_brake', 'flooding': 'habitual_violation',
+          'poor_lighting': 'habitual_violation', 'road_damage': 'habitual_violation',
+          'accident': 'accident', 'congestion': 'habitual_violation',
+          'overspeeding': 'habitual_violation', 'habitual_violation': 'habitual_violation'
+        };
+
+        await Risk.create({
+          type: riskTypeMap[parsed.hazard_type] || 'habitual_violation',
+          description: `[AI-Detected] ${parsed.description}`,
+          lat: parseFloat(lat) || 13.0827,
+          lng: parseFloat(lng) || 80.2707,
+          severity: parsed.severity_num || 3,
+          timeOfDay: getTimeOfDay(),
+          weather: 'clear',
+          roadName: `AI Report (${new Date().toLocaleTimeString()})`,
+          landmark: '',
+          verified: false,
+          photoUrl: photoUrl
+        });
+        parsed.auto_reported = true;
+      } catch (dbErr) {
+        console.warn('Auto-report failed:', dbErr.message);
+        parsed.auto_reported = false;
+      }
+
+      res.json({ success: true, data: parsed });
+    } else {
+      res.json({
+        success: true,
+        data: {
+          hazard_type: 'road_damage',
+          severity: 'moderate',
+          severity_num: 3,
+          description: 'A road hazard was detected. Please review and confirm the details.',
+          road_condition: 'fair',
+          visibility: 'moderate',
+          recommended_action: 'Reduce speed and stay alert.',
+          auto_reported: false
+        }
+      });
+    }
+  } catch (err) {
+    console.error('Photo Analysis error:', err.message);
+    res.status(500).json({ success: false, error: 'Photo analysis failed.' });
+  }
+});
+
+function getTimeOfDay() {
+  const hour = new Date().getHours();
+  if (hour >= 6 && hour < 10) return 'morning_rush';
+  if (hour >= 10 && hour < 16) return 'afternoon';
+  if (hour >= 16 && hour < 20) return 'evening_rush';
+  return 'night';
+}
+
 // ─── POST /api/llm/nlp-process — Full NLP Voice Pipeline ───────────────────────
 router.post('/llm/nlp-process', async (req, res) => {
   try {

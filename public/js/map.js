@@ -44,7 +44,33 @@ let userLat = null, userLng = null;
 let speedWatchId = null;
 let currentSpeed = 0;
 let lastSpeedLogTime = 0;
-let capturedPhotos = []; // Hazard photos taken via camera
+let capturedPhotos = [];
+
+// ─── Performance & Refresh State ────────────────────────────────────────────────
+const REFRESH_RISK_MS = 15000;    // Risk data refresh: 15s
+const REFRESH_ALERT_MS = 10000;   // Alert poll: 10s
+const FETCH_TIMEOUT_MS = 3000;    // Max wait before showing cache
+let lastRiskHash = '';             // Data change detection hash
+let refreshTimers = {};            // Background refresh timers
+let isUpdatingBadge = false;       // Prevent badge update stampede
+
+// ─── SessionStorage Cache Layer ─────────────────────────────────────────────────
+function cacheSet(key, data) {
+  try { sessionStorage.setItem('ma_' + key, JSON.stringify({ ts: Date.now(), data })); } catch (e) {}
+}
+function cacheGet(key, maxAgeMs = 120000) {
+  try {
+    const raw = sessionStorage.getItem('ma_' + key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Date.now() - parsed.ts > maxAgeMs) return null;
+    return parsed.data;
+  } catch (e) { return null; }
+}
+function computeDataHash(data) {
+  // Simple hash from IDs + severities + cleared states
+  return data.map(r => `${r.id || r._id}:${r.severity}:${r.cleared ? 1 : 0}`).join('|');
+}
 
 // ─── Map Initialization ────────────────────────────────────────────────────────
 function initMap() {
@@ -88,21 +114,77 @@ function initSocket() {
   }
 }
 
-// ─── Load All Risks ─────────────────────────────────────────────────────────────
+// ─── Load All Risks (Cached + Background) ──────────────────────────────────────
 async function loadAllRisks() {
+  // 1. Show cached data instantly
+  const cached = cacheGet('risks');
+  if (cached && allRisks.length === 0) {
+    allRisks = cached;
+    lastRiskHash = computeDataHash(cached);
+    renderMarkers();
+    renderRiskList();
+    initHeatLayer();
+    updateAlertBadge();
+  }
+
+  // 2. Fetch fresh data with timeout
   try {
-    const res = await fetch('/api/risks');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const res = await fetch('/api/risks', { signal: controller.signal });
+    clearTimeout(timeout);
     const json = await res.json();
     if (json.success) {
-      allRisks = json.data;
-      renderMarkers();
-      renderRiskList();
-      initHeatLayer();
-      updateAlertBadge();
+      const newHash = computeDataHash(json.data);
+      // Only re-render if data actually changed
+      if (newHash !== lastRiskHash) {
+        lastRiskHash = newHash;
+        allRisks = json.data;
+        cacheSet('risks', json.data);
+        renderMarkers();
+        renderRiskList();
+        initHeatLayer();
+        updateAlertBadge();
+        hideUpdatingBadge();
+      }
     }
   } catch (err) {
-    console.error('Failed to load risks:', err);
+    if (err.name === 'AbortError') {
+      // Timeout — show subtle updating badge, use cached data
+      showUpdatingBadge();
+    } else {
+      console.warn('Risk fetch failed:', err.message);
+    }
   }
+}
+
+// ─── Background Refresh System ──────────────────────────────────────────────────
+function startBackgroundRefresh() {
+  // Risk data every 15s
+  refreshTimers.risks = setInterval(() => {
+    loadAllRisks();
+  }, REFRESH_RISK_MS);
+
+  // Alert badge every 10s
+  refreshTimers.alerts = setInterval(() => {
+    updateAlertBadge();
+  }, REFRESH_ALERT_MS);
+}
+
+function showUpdatingBadge() {
+  let badge = document.getElementById('updatingBadge');
+  if (!badge) {
+    badge = document.createElement('div');
+    badge.id = 'updatingBadge';
+    badge.className = 'updating-badge';
+    badge.innerHTML = '🔄 Updating...';
+    document.body.appendChild(badge);
+  }
+  badge.classList.add('visible');
+}
+function hideUpdatingBadge() {
+  const badge = document.getElementById('updatingBadge');
+  if (badge) badge.classList.remove('visible');
 }
 
 // ─── Update Alert Badge ─────────────────────────────────────────────────────────
@@ -733,16 +815,77 @@ function openCamera() {
   if (input) input.click();
 }
 
-function handleCameraCapture(input) {
+async function handleCameraCapture(input) {
   const files = input.files;
   if (!files || files.length === 0) return;
 
   for (let i = 0; i < files.length && capturedPhotos.length < 3; i++) {
-    capturedPhotos.push(files[i]);
+    // Compress image before storing
+    const compressed = await compressImage(files[i], 800, 0.75);
+    capturedPhotos.push(compressed);
   }
 
+  // Auto-attach GPS to the report
+  autoAttachGPS();
+
   renderPhotoPreview();
-  showToast(`📸 ${capturedPhotos.length} photo(s) attached!`);
+  showToast(`📸 ${capturedPhotos.length} photo(s) compressed & attached!`);
+}
+
+// ─── Image Compression (max width, JPEG quality) ────────────────────────────────
+function compressImage(file, maxWidth = 800, quality = 0.75) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob((blob) => {
+          const compressed = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+          resolve(compressed);
+        }, 'image/jpeg', quality);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ─── Auto-Attach GPS to Report ──────────────────────────────────────────────────
+function autoAttachGPS() {
+  if (pickedLatLng) return; // Already picked
+  if (userLat && userLng) {
+    pickedLatLng = { lat: userLat, lng: userLng };
+    const pickedEl = document.getElementById('pickedCoords');
+    const latEl = document.getElementById('pickedLat');
+    const lngEl = document.getElementById('pickedLng');
+    const hintEl = document.getElementById('locationPickerHint');
+    if (pickedEl) pickedEl.style.display = 'flex';
+    if (latEl) latEl.textContent = userLat.toFixed(6);
+    if (lngEl) lngEl.textContent = userLng.toFixed(6);
+    if (hintEl) hintEl.style.display = 'none';
+    showToast('📍 GPS location auto-attached!', 'success');
+  } else {
+    // Try to get GPS now
+    navigator.geolocation?.getCurrentPosition((pos) => {
+      pickedLatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      const pickedEl = document.getElementById('pickedCoords');
+      const latEl = document.getElementById('pickedLat');
+      const lngEl = document.getElementById('pickedLng');
+      if (pickedEl) pickedEl.style.display = 'flex';
+      if (latEl) latEl.textContent = pos.coords.latitude.toFixed(6);
+      if (lngEl) lngEl.textContent = pos.coords.longitude.toFixed(6);
+      showToast('📍 GPS location auto-attached!', 'success');
+    }, () => {
+      showToast('📍 Please tap on the map to set hazard location.', 'error');
+    }, { enableHighAccuracy: true, timeout: 5000 });
+  }
 }
 
 function renderPhotoPreview() {
@@ -836,4 +979,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initMap();
   setupAutocomplete('startLocation', 'startDropdown');
   setupAutocomplete('endLocation', 'endDropdown');
+  startBackgroundRefresh();
+  // Auto-start voice assistant (Section B)
+  setTimeout(() => { autoStartVoice(); }, 1500);
 });
